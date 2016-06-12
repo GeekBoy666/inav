@@ -35,6 +35,7 @@
 #include "config/config.h"
 
 #include "flight/failsafe.h"
+#include "flight/navigation_rewrite.h"
 
 #include "flight/navigation_rewrite.h"
 
