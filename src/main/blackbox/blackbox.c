@@ -286,6 +286,7 @@ static const blackboxSimpleFieldDefinition_t blackboxSlowFields[] = {
 typedef enum BlackboxState {
     BLACKBOX_STATE_DISABLED = 0,
     BLACKBOX_STATE_STOPPED,
+    BLACKBOX_STATE_PREPARE_LOG_FILE,
     BLACKBOX_STATE_SEND_HEADER,
     BLACKBOX_STATE_SEND_MAIN_FIELD_HEADER,
     BLACKBOX_STATE_SEND_GPS_H_HEADER,
@@ -387,6 +388,7 @@ STATIC_ASSERT((sizeof(blackboxConditionCache) * 8) >= FLIGHT_LOG_FIELD_CONDITION
 static uint32_t blackboxIteration;
 static uint16_t blackboxPFrameIndex, blackboxIFrameIndex;
 static uint16_t blackboxSlowFrameIterationTimer;
+static bool blackboxLoggedAnyFrames;
 
 /*
  * We store voltages in I-frames relative to this, which was the voltage when the blackbox was activated.
@@ -406,7 +408,16 @@ static blackboxMainState_t* blackboxHistory[3];
 
 static bool blackboxModeActivationConditionPresent = false;
 
-static bool blackboxIsOnlyLoggingIntraframes() {
+/**
+ * Return true if it is safe to edit the Blackbox configuration.
+ */
+bool blackboxMayEditConfig(void)
+{
+    return blackboxState <= BLACKBOX_STATE_STOPPED;
+}
+
+static bool blackboxIsOnlyLoggingIntraframes()
+{
     return masterConfig.blackbox_rate_num == 1 && masterConfig.blackbox_rate_denom == 32;
 }
 
@@ -425,7 +436,7 @@ static bool testBlackboxConditionUncached(FlightLogFieldCondition condition)
         case FLIGHT_LOG_FIELD_CONDITION_AT_LEAST_MOTORS_7:
         case FLIGHT_LOG_FIELD_CONDITION_AT_LEAST_MOTORS_8:
             return motorCount >= condition - FLIGHT_LOG_FIELD_CONDITION_AT_LEAST_MOTORS_1 + 1;
-
+        
         case FLIGHT_LOG_FIELD_CONDITION_TRICOPTER:
             return masterConfig.mixerMode == MIXER_TRI || masterConfig.mixerMode == MIXER_CUSTOM_TRI;
 
@@ -496,6 +507,9 @@ static void blackboxSetState(BlackboxState newState)
 {
     //Perform initial setup required for the new state
     switch (newState) {
+        case BLACKBOX_STATE_PREPARE_LOG_FILE:
+            blackboxLoggedAnyFrames = false;
+        break;
         case BLACKBOX_STATE_SEND_HEADER:
             blackboxHeaderBudget = 0;
             xmitState.headerIndex = 0;
@@ -516,7 +530,6 @@ static void blackboxSetState(BlackboxState newState)
         break;
         case BLACKBOX_STATE_SHUTTING_DOWN:
             xmitState.u.startTime = millis();
-            blackboxDeviceFlush();
         break;
         default:
             ;
@@ -886,8 +899,20 @@ static void validateBlackboxConfig()
         masterConfig.blackbox_rate_denom /= div;
     }
 
-    if (masterConfig.blackbox_device >= BLACKBOX_DEVICE_END) {
-        masterConfig.blackbox_device = BLACKBOX_DEVICE_SERIAL;
+    // If we've chosen an unsupported device, change the device to serial
+    switch (masterConfig.blackbox_device) {
+#ifdef USE_FLASHFS
+        case BLACKBOX_DEVICE_FLASH:
+#endif
+#ifdef USE_SDCARD
+        case BLACKBOX_DEVICE_SDCARD:
+#endif
+        case BLACKBOX_DEVICE_SERIAL:
+            // Device supported, leave the setting alone
+        break;
+
+        default:
+            masterConfig.blackbox_device = BLACKBOX_DEVICE_SERIAL;
     }
 }
 
@@ -920,7 +945,7 @@ void startBlackbox(void)
          * cache those now.
          */
         blackboxBuildConditionCache();
-
+        
         blackboxModeActivationConditionPresent = isModeActivationConditionPresent(currentProfile->modeActivationConditions, BOXBLACKBOX);
 
         blackboxIteration = 0;
@@ -933,7 +958,7 @@ void startBlackbox(void)
          */
         blackboxLastArmingBeep = getArmingBeepTimeMicros();
 
-        blackboxSetState(BLACKBOX_STATE_SEND_HEADER);
+        blackboxSetState(BLACKBOX_STATE_PREPARE_LOG_FILE);
     }
 }
 
@@ -942,18 +967,20 @@ void startBlackbox(void)
  */
 void finishBlackbox(void)
 {
-    if (blackboxState == BLACKBOX_STATE_RUNNING || blackboxState == BLACKBOX_STATE_PAUSED) {
-        blackboxLogEvent(FLIGHT_LOG_EVENT_LOG_END, NULL);
+    switch (blackboxState) {
+        case BLACKBOX_STATE_DISABLED:
+        case BLACKBOX_STATE_STOPPED:
+        case BLACKBOX_STATE_SHUTTING_DOWN:
+            // We're already stopped/shutting down
+        break;
 
-        blackboxSetState(BLACKBOX_STATE_SHUTTING_DOWN);
-    } else if (blackboxState != BLACKBOX_STATE_DISABLED && blackboxState != BLACKBOX_STATE_STOPPED
-            && blackboxState != BLACKBOX_STATE_SHUTTING_DOWN) {
-        /*
-         * We're shutting down in the middle of transmitting headers, so we can't log a "log completed" event.
-         * Just give the port back and stop immediately.
-         */
-        blackboxDeviceClose();
-        blackboxSetState(BLACKBOX_STATE_STOPPED);
+        case BLACKBOX_STATE_RUNNING:
+        case BLACKBOX_STATE_PAUSED:
+            blackboxLogEvent(FLIGHT_LOG_EVENT_LOG_END, NULL);
+
+            // Fall through
+        default:
+            blackboxSetState(BLACKBOX_STATE_SHUTTING_DOWN);
     }
 }
 
@@ -1228,35 +1255,38 @@ static bool blackboxWriteSysinfo()
             blackboxPrintfHeaderLine("P interval:%d/%d", masterConfig.blackbox_rate_num, masterConfig.blackbox_rate_denom);
         break;
         case 4:
-            blackboxPrintfHeaderLine("rcRate:%d", 100); //For compatibility reasons write rc_rate 100
+            blackboxPrintfHeaderLine("Device UID:0x%x%x%x", U_ID_0, U_ID_1, U_ID_2);
         break;
         case 5:
-            blackboxPrintfHeaderLine("minthrottle:%d", masterConfig.escAndServoConfig.minthrottle);
+            blackboxPrintfHeaderLine("rcRate:%d", 100); //For compatibility reasons write rc_rate 100
         break;
         case 6:
-            blackboxPrintfHeaderLine("maxthrottle:%d", masterConfig.escAndServoConfig.maxthrottle);
+            blackboxPrintfHeaderLine("minthrottle:%d", masterConfig.escAndServoConfig.minthrottle);
         break;
         case 7:
-            blackboxPrintfHeaderLine("gyro.scale:0x%x", castFloatBytesToInt(gyro.scale));
+            blackboxPrintfHeaderLine("maxthrottle:%d", masterConfig.escAndServoConfig.maxthrottle);
         break;
         case 8:
-            blackboxPrintfHeaderLine("acc_1G:%u", acc.acc_1G);
+            blackboxPrintfHeaderLine("gyro.scale:0x%x", castFloatBytesToInt(gyro.scale));
         break;
         case 9:
+            blackboxPrintfHeaderLine("acc_1G:%u", acc.acc_1G);
+        break;
+        case 10:
             if (testBlackboxCondition(FLIGHT_LOG_FIELD_CONDITION_VBAT)) {
                 blackboxPrintfHeaderLine("vbatscale:%u", masterConfig.batteryConfig.vbatscale);
             } else {
                 xmitState.headerIndex += 2; // Skip the next two vbat fields too
             }
         break;
-        case 10:
+        case 11:
             blackboxPrintfHeaderLine("vbatcellvoltage:%u,%u,%u", masterConfig.batteryConfig.vbatmincellvoltage,
                 masterConfig.batteryConfig.vbatwarningcellvoltage, masterConfig.batteryConfig.vbatmaxcellvoltage);
         break;
-        case 11:
+        case 12:
             blackboxPrintfHeaderLine("vbatref:%u", vbatReference);
         break;
-        case 12:
+        case 13:
             //Note: Log even if this is a virtual current meter, since the virtual meter uses these parameters too:
             if (feature(FEATURE_CURRENT_METER)) {
                 blackboxPrintfHeaderLine("currentMeter:%d,%d", masterConfig.batteryConfig.currentMeterOffset, masterConfig.batteryConfig.currentMeterScale);
@@ -1417,6 +1447,11 @@ void handleBlackbox(void)
     }
 
     switch (blackboxState) {
+        case BLACKBOX_STATE_PREPARE_LOG_FILE:
+            if (blackboxDeviceBeginLog()) {
+                blackboxSetState(BLACKBOX_STATE_SEND_HEADER);
+            }
+        break;
         case BLACKBOX_STATE_SEND_HEADER:
             //On entry of this state, xmitState.headerIndex is 0 and startTime is intialised
 
@@ -1483,7 +1518,7 @@ void handleBlackbox(void)
                  * (overflowing circular buffers causes all data to be discarded, so the first few logged iterations
                  * could wipe out the end of the header if we weren't careful)
                  */
-                if (blackboxDeviceFlush()) {
+                if (blackboxDeviceFlushForce()) {
                     blackboxSetState(BLACKBOX_STATE_RUNNING);
                 }
             }
@@ -1499,7 +1534,7 @@ void handleBlackbox(void)
 
                 blackboxLogEvent(FLIGHT_LOG_EVENT_LOGGING_RESUME, (flightLogEventData_t *) &resume);
                 blackboxSetState(BLACKBOX_STATE_RUNNING);
-
+                
                 blackboxLogIteration();
             }
 
@@ -1517,7 +1552,7 @@ void handleBlackbox(void)
             blackboxAdvanceIterationTimers();
         break;
         case BLACKBOX_STATE_SHUTTING_DOWN:
-            //On entry of this state, startTime is set and a flush is performed
+            //On entry of this state, startTime is set
 
             /*
              * Wait for the log we've transmitted to make its way to the logger before we release the serial port,
@@ -1525,7 +1560,7 @@ void handleBlackbox(void)
              *
              * Don't wait longer than it could possibly take if something funky happens.
              */
-            if (millis() > xmitState.u.startTime + BLACKBOX_SHUTDOWN_TIMEOUT_MILLIS || blackboxDeviceFlush()) {
+            if (blackboxDeviceEndLog(blackboxLoggedAnyFrames) && (millis() > xmitState.u.startTime + BLACKBOX_SHUTDOWN_TIMEOUT_MILLIS || blackboxDeviceFlushForce())) {
                 blackboxDeviceClose();
                 blackboxSetState(BLACKBOX_STATE_STOPPED);
             }
