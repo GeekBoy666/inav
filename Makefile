@@ -16,7 +16,7 @@
 #
 
 # The target to build, see VALID_TARGETS below
-TARGET    ?= NAZE
+TARGET    ?= MODULOF7
 
 # Compile-time options
 OPTIONS   ?=
@@ -70,8 +70,9 @@ VALID_TARGETS  := $(sort $(VALID_TARGETS))
 
 F3_TARGETS = ALIENWIIF3 CHEBUZZF3 COLIBRI_RACE LUX_RACE MOTOLAB NAZE32PRO RMDO SPARKY SPRACINGF3 STM32F3DISCOVERY
 F4_TARGETS = ANYFC REVO COLIBRI
+F7_TARGETS = MODULOF7
 
-VALID_TARGETS = $(64K_TARGETS) $(128K_TARGETS) $(256K_TARGETS) $(F4_TARGETS)
+VALID_TARGETS = $(64K_TARGETS) $(128K_TARGETS) $(256K_TARGETS) $(F4_TARGETS) $(F7_TARGETS)
 
 # silently ignore if the file is not present. Allows for target specific.
 -include $(ROOT)/src/main/target/$(BASE_TARGET)/target.mk
@@ -101,6 +102,9 @@ else ifeq ($(TARGET),$(filter $(TARGET),$(256K_TARGETS)))
 FLASH_SIZE = 256
 else ifeq ($(TARGET),$(filter $(TARGET),ANYFC REVO COLIBRI))
 FLASH_SIZE = 256
+else
+else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7))
+FLASH_SIZE = 1024
 else
 $(error FLASH_SIZE not configured for target $(TARGET))
 endif
@@ -225,6 +229,73 @@ DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
 VPATH     := $(VPATH):$(CMSIS_DIR)/CM1/CoreSupport:$(CMSIS_DIR)/CM1/DeviceSupport/ST/STM32F4xx
 CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM1/CoreSupport/*.c \
              $(CMSIS_DIR)/CM1/DeviceSupport/ST/STM32F4xx/*.c))
+
+INCLUDE_DIRS   := $(INCLUDE_DIRS) \
+                  $(STDPERIPH_DIR)/inc \
+                  $(USBOTG_DIR)/inc \
+                  $(USBCORE_DIR)/inc \
+                  $(USBCDC_DIR)/inc \
+                  $(CMSIS_DIR)/CM1/CoreSupport \
+                  $(CMSIS_DIR)/CM1/DeviceSupport/ST/STM32F4xx \
+                  $(ROOT)/src/main/vcpf4
+
+ARCH_FLAGS      = -mthumb -mcpu=cortex-m4 -march=armv7e-m -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fsingle-precision-constant -Wdouble-promotion
+DEVICE_FLAGS    = -DSTM32F40_41xxx
+ifeq ($(TARGET),ANYFC)
+DEVICE_FLAGS   += -DHSE_VALUE=8000000
+LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405.ld
+.DEFAULT_GOAL  := binary
+endif
+ifeq ($(TARGET),REVO)
+DEVICE_FLAGS   += -DHSE_VALUE=8000000
+LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405_bl.ld
+.DEFAULT_GOAL  := binary
+endif
+ifeq ($(TARGET),COLIBRI)
+DEVICE_FLAGS   += -DHSE_VALUE=16000000
+LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405_bl.ld
+.DEFAULT_GOAL  := binary
+endif
+TARGET_FLAGS   = -D$(TARGET)
+
+# F7
+else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7))
+
+STDPERIPH_DIR  = $(ROOT)/lib/main/STM32F7xx_HAL_Driver
+STDPERIPH_SRC  = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*.c))
+#EXCLUDES       = stm32f4xx_crc.c \
+#                 stm32f4xx_can.c \
+#                 stm32f4xx_fmc.c \
+#                 stm32f4xx_sai.c
+STDPERIPH_SRC := $(filter-out ${EXCLUDES}, $(STDPERIPH_SRC))
+
+USBCORE_DIR = $(ROOT)/lib/main/STM32_USB_Device_Library/Core
+USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/src/*.c))
+
+USBOTG_DIR = $(ROOT)/lib/main/STM32_USB_OTG_Driver
+USBOTG_SRC = $(notdir $(wildcard $(USBOTG_DIR)/src/*.c))
+EXCLUDES   = usb_bsp_template.c \
+             usb_hcd_int.c \
+             usb_hcd.c \
+             usb_otg.c
+
+USBOTG_SRC := $(filter-out ${EXCLUDES}, $(USBOTG_SRC))
+
+USBCDC_DIR  = $(ROOT)/lib/main/STM32_USB_Device_Library/Class/cdc
+USBCDC_SRC  = $(notdir $(wildcard $(USBCDC_DIR)/src/*.c))
+EXCLUDES    = usbd_cdc_if_template.c
+USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
+
+VPATH := $(VPATH):$(USBOTG_DIR)/src:$(USBCORE_DIR)/src:$(USBCDC_DIR)/src
+
+DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
+                        $(USBOTG_SRC) \
+                        $(USBCORE_SRC) \
+                        $(USBCDC_SRC) 
+
+VPATH     := $(VPATH):$(CMSIS_DIR)/CM7/CoreSupport:$(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx
+CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM7/CoreSupport/*.c \
+             $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/*.c))
 
 INCLUDE_DIRS   := $(INCLUDE_DIRS) \
                   $(STDPERIPH_DIR)/inc \
