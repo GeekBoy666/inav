@@ -85,18 +85,45 @@ const uint16_t airPWM[] = {
     0xFFFF
 };
 
+//   Timer, port , pin  , Channel      ,  IRQn       , out, mode,   , pinsource      , alternate function
 const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
-    { TIM12, GPIOB, Pin_14, TIM_Channel_1, TIM8_BRK_TIM12_IRQn, 0, GPIO_Mode_AF, GPIO_PinSource14, GPIO_AF_TIM12}, // S1_IN
-    { TIM12, GPIOB, Pin_15, TIM_Channel_2, TIM8_BRK_TIM12_IRQn, 0, GPIO_Mode_AF, GPIO_PinSource15, GPIO_AF_TIM12}, // S2_IN - GPIO_PartialRemap_TIM3
-    { TIM8, GPIOC, Pin_6, TIM_Channel_1, TIM8_CC_IRQn, 0, GPIO_Mode_AF, GPIO_PinSource6, GPIO_AF_TIM8}, // S3_IN
-    { TIM8, GPIOC, Pin_7, TIM_Channel_2, TIM8_CC_IRQn, 0, GPIO_Mode_AF, GPIO_PinSource7, GPIO_AF_TIM8}, // S4_IN
-    { TIM8, GPIOC, Pin_8, TIM_Channel_3, TIM8_CC_IRQn, 0, GPIO_Mode_AF, GPIO_PinSource8, GPIO_AF_TIM8}, // S5_IN
-    { TIM8, GPIOC, Pin_9, TIM_Channel_4, TIM8_CC_IRQn, 0, GPIO_Mode_AF, GPIO_PinSource9, GPIO_AF_TIM8}, // S6_IN
+    // inputs
+    { TIM1, GPIOE, Pin_9, TIM_Channel_1, TIM1_CC_IRQn, 1, Mode_AF_PP_PD, 9, GPIO_AF1_TIM1},               // RX1,         PE9
+    { TIM1, GPIOE, Pin_11, TIM_Channel_2, TIM1_CC_IRQn, 1, Mode_AF_PP_PD, 11, GPIO_AF1_TIM1},             // RX2,         PE11
+    { TIM1, GPIOE, Pin_13, TIM_Channel_3, TIM1_CC_IRQn, 1, Mode_AF_PP_PD, 13, GPIO_AF1_TIM1},             // RX3,         PE13
+    { TIM1, GPIOE, Pin_14, TIM_Channel_4, TIM1_CC_IRQn, 1, Mode_AF_PP_PD, 14, GPIO_AF1_TIM1},             // RX4,         PE14
+    
+    { TIM3, GPIOE, Pin_5, TIM_Channel_3, TIM3_IRQn, 1, Mode_AF_PP_PD, 5, GPIO_AF2_TIM3},                  // RX5          PE5
+    { TIM3, GPIOE, Pin_6, TIM_Channel_4, TIM3_IRQn, 1, Mode_AF_PP_PD, 6, GPIO_AF2_TIM3},                  // RX6,         PE6
+    
+    
+    // outputs
+    { TIM4, GPIOD, Pin_12, TIM_Channel_1, TIM4_IRQn, 1, Mode_AF_PP_PD, 12, GPIO_AF2_TIM4},                // OUT1,        PD12
+    { TIM4, GPIOD, Pin_13, TIM_Channel_2, TIM4_IRQn, 1, Mode_AF_PP_PD, 13, GPIO_AF2_TIM4},                // OUT2,        PD13
+    { TIM4, GPIOD, Pin_14, TIM_Channel_3, TIM4_IRQn, 1, Mode_AF_PP_PD, 14, GPIO_AF2_TIM4},                // OUT3,        PD14
+    { TIM4, GPIOD, Pin_15, TIM_Channel_4, TIM4_IRQn, 1, Mode_AF_PP_PD, 15, GPIO_AF2_TIM4},                // OUT4,        PD15
+    
+    { TIM9, GPIOE, Pin_5, TIM_Channel_1, TIM1_BRK_TIM9_IRQn, 1, Mode_AF_PP_PD, 5, GPIO_AF3_TIM9},         // OUT5,        PE5
+    { TIM9, GPIOE, Pin_6, TIM_Channel_2, TIM1_BRK_TIM9_IRQn, 1, Mode_AF_PP_PD, 6, GPIO_AF3_TIM9},         // OUT6,        PE6
+    
+    { TIM10, GPIOB, Pin_8, TIM_Channel_1, TIM1_UP_TIM10_IRQn, 1, Mode_AF_PP_PD, 8, GPIO_AF3_TIM10},       // OUT7,        PB8
 
-    { TIM3, GPIOB, Pin_0, TIM_Channel_3, TIM3_IRQn, 1, GPIO_Mode_AF, GPIO_PinSource0, GPIO_AF_TIM3},    // S1_OUT
-    { TIM3, GPIOB, Pin_1, TIM_Channel_4, TIM3_IRQn, 1, GPIO_Mode_AF, GPIO_PinSource1, GPIO_AF_TIM3},    // S2_OUT
-    { TIM9, GPIOA, Pin_3, TIM_Channel_2, TIM1_BRK_TIM9_IRQn, 1, GPIO_Mode_AF, GPIO_PinSource3, GPIO_AF_TIM9},    // S3_OUT
-    { TIM2, GPIOA, Pin_2, TIM_Channel_3, TIM2_IRQn, 1, GPIO_Mode_AF, GPIO_PinSource2, GPIO_AF_TIM2}, // S4_OUT
-    { TIM5, GPIOA, Pin_1, TIM_Channel_2, TIM5_IRQn, 1, GPIO_Mode_AF, GPIO_PinSource1, GPIO_AF_TIM5},    // S5_OUT - GPIO_PartialRemap_TIM3
-    { TIM5, GPIOA, Pin_0, TIM_Channel_1, TIM5_IRQn, 1, GPIO_Mode_AF, GPIO_PinSource0, GPIO_AF_TIM5},    // S6_OUT
+    { TIM11, GPIOB, Pin_9, TIM_Channel_1, TIM1_TRG_COM_TIM11_IRQn, 1, Mode_AF_PP_PD, 9, GPIO_AF3_TIM11},  // OUT8,        PB9
+    
+    // other
+    { TIM13, GPIOA, Pin_6, TIM_Channel_1, TIM8_UP_TIM13_IRQn, 1, Mode_AF_PP_PD, 6, GPIO_AF9_TIM13},       // LEDStrip,    PA6
+   
+    { TIM14, GPIOA, Pin_7, TIM_Channel_1, TIM8_TRG_COM_TIM14_IRQn, 1, Mode_AF_PP_PD, 7, GPIO_AF9_TIM14},  // IR,          PA7
+    
+    // optional extra but shared with other default functions
+    { TIM5, GPIOA, Pin_0, TIM_Channel_1, TIM5_IRQn, 1, Mode_AF_PP_PD, 0, GPIO_AF9_TIM13},                 // UART4_TX,    PA0
+    { TIM5, GPIOA, Pin_1, TIM_Channel_2, TIM5_IRQn, 1, Mode_AF_PP_PD, 1, GPIO_AF9_TIM13},                 // UART4_RX,    PA1
+    
+    { TIM2, GPIOA, Pin_5, TIM_Channel_1, TIM2_IRQn, 1, Mode_AF_PP_PD, 5, GPIO_AF9_TIM13},                 // ANALOG_DAC,  PA5
+    { TIM2, GPIOB, Pin_10, TIM_Channel_3, TIM2_IRQn, 1, Mode_AF_PP_PD, 10, GPIO_AF9_TIM13},               // I2C2_SCL,    PB10
+    { TIM2, GPIOB, Pin_11, TIM_Channel_4, TIM2_IRQn, 1, Mode_AF_PP_PD, 11, GPIO_AF9_TIM13},               // I2C2_SDA,    PB11
+    
+    { TIM8, GPIOC, Pin_6, TIM_Channel_1, TIM8_CC_IRQn, 1, Mode_AF_PP_PD, 6, GPIO_AF9_TIM13},              // UART6_TX,    PC6
+    { TIM8, GPIOC, Pin_7, TIM_Channel_2, TIM8_CC_IRQn, 1, Mode_AF_PP_PD, 7, GPIO_AF9_TIM13},              // UART6_RX,    PC7
+    { TIM8, GPIOC, Pin_9, TIM_Channel_4, TIM8_CC_IRQn, 1, Mode_AF_PP_PD, 9, GPIO_AF9_TIM13},              // I2C3_SDA,    PC9
 };
