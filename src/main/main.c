@@ -168,6 +168,12 @@ void init(void)
 {
     uint8_t i;
     drv_pwm_config_t pwm_params;
+    
+    
+#ifdef USE_HAL_DRIVER
+    HAL_Init();
+    
+#endif
 
     printfSupportInit();
 

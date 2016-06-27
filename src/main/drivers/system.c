@@ -120,9 +120,13 @@ uint32_t cachedRccCsrValue;
 
 static void cycleCounterInit(void)
 {
+#ifdef USE_HAL_DRIVER
+    usTicks = HAL_RCC_GetSysClockFreq() / 1000000;
+#else
     RCC_ClocksTypeDef clocks;
     RCC_GetClocksFreq(&clocks);
     usTicks = clocks.SYSCLK_Frequency / 1000000;
+#endif
 }
 
 // SysTick
@@ -156,6 +160,72 @@ uint32_t millis(void)
 
 void systemInit(void)
 {
+
+    
+#ifdef USE_HAL_DRIVER
+    // Priority grouping should be setup before any irq prio is set.
+    HAL_NVIC_GetPriorityGrouping(NVIC_PRIORITY_GROUPING);
+    
+    /* Configure the system clock to 216 MHz */
+    SystemClock_Config();
+    
+    // GPIO ports are always used so it makes sense to just enable the clocks to the available ports
+    #ifdef GPIOA
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+    #endif    
+    #ifdef GPIOB
+        __HAL_RCC_GPIOB_CLK_ENABLE();
+    #endif
+    #ifdef GPIOC
+        __HAL_RCC_GPIOC_CLK_ENABLE();
+    #endif
+    #ifdef GPIOD
+        __HAL_RCC_GPIOD_CLK_ENABLE();
+    #endif
+    #ifdef GPIOE
+        __HAL_RCC_GPIOE_CLK_ENABLE();
+    #endif
+    #ifdef GPIOF
+        __HAL_RCC_GPIOF_CLK_ENABLE();
+    #endif
+        
+    // It makes it all lot easier if we just enable to DMA clocks, the additional idle current is neglectable
+    #ifdef DMA1
+        __HAL_RCC_DMA1_CLK_ENABLE();
+    #endif
+    #ifdef DMA2
+        __HAL_RCC_DMA2D_CLK_ENABLE();
+    #endif
+    
+    // Init clocks of used peripherals        
+    #ifdef USE_USART1
+    __HAL_RCC_UART1_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART2
+    __HAL_RCC_UART2_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART3
+    __HAL_RCC_UART3_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART4
+    __HAL_RCC_UART4_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART5
+    __HAL_RCC_UART5_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART6
+    __HAL_RCC_UART6_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART7
+    __HAL_RCC_UART7_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART8
+    __HAL_RCC_UART8_CLK_ENABLE();
+    #endif
+    
+
+
+#else
 #ifdef CC3D
     /* Accounts for OP Bootloader, set the Vector Table base address as specified in .ld file */
     extern void *isr_vector_table_base;
@@ -199,6 +269,8 @@ void systemInit(void)
     // Turn off JTAG port 'cause we're using the GPIO for leds
 #define AFIO_MAPR_SWJ_CFG_NO_JTAG_SW            (0x2 << 24)
     AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_NO_JTAG_SW;
+#endif
+    
 #endif
 
     // Init cycle counter
