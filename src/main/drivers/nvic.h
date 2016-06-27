@@ -1,7 +1,11 @@
 
 #pragma once
 
+#ifdef USE_HAL_DRIVER
+#define NVIC_PRIORITY_GROUPING NVIC_PRIORITYGROUP_2
+#else
 #define NVIC_PRIORITY_GROUPING NVIC_PriorityGroup_2
+#endif
 
 // can't use 0
 #define NVIC_PRIO_MAX                      NVIC_BUILD_PRIORITY(0, 1)
