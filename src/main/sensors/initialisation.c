@@ -189,6 +189,20 @@ const extiConfig_t *selectMPUIntExtiConfig(void)
     return &revoMPUIntExtiConfig;
 #endif
 
+#if defined(MODULOF7)
+    /// Fixme: HAL implent HAL drivers for EXTI
+//    static const extiConfig_t moduloMPUIntExtiConfig = {
+//            .gpioAHB1Peripherals = RCC_AHB1Periph_GPIOC,
+//            .gpioPort = GPIOC,
+//            .gpioPin = Pin_4,
+//            .exti_port_source = EXTI_PortSourceGPIOC,
+//            .exti_pin_source = EXTI_PinSource4,
+//            .exti_line = EXTI_Line4,
+//            .exti_irqn = EXTI4_IRQn
+//    };
+//    return &moduloMPUIntExtiConfig;
+#endif
+
 #if defined(COLIBRI)
     static const extiConfig_t colibriMPUIntExtiConfig = {
             .gpioAHB1Peripherals = RCC_AHB1Periph_GPIOC,
@@ -925,4 +939,3 @@ bool sensorsAutodetect(sensorAlignmentConfig_t *sensorAlignmentConfig, uint8_t g
 
     return true;
 }
-

@@ -164,10 +164,8 @@ void systemInit(void)
     
 #ifdef USE_HAL_DRIVER
     // Priority grouping should be setup before any irq prio is set.
-    HAL_NVIC_GetPriorityGrouping(NVIC_PRIORITY_GROUPING);
-    
-    /* Configure the system clock to 216 MHz */
-    SystemClock_Config();
+    HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITY_GROUPING);
+   
     
     // GPIO ports are always used so it makes sense to just enable the clocks to the available ports
     #ifdef GPIOA

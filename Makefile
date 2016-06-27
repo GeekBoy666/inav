@@ -102,7 +102,6 @@ else ifeq ($(TARGET),$(filter $(TARGET),$(256K_TARGETS)))
 FLASH_SIZE = 256
 else ifeq ($(TARGET),$(filter $(TARGET),ANYFC REVO COLIBRI))
 FLASH_SIZE = 256
-else
 else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7))
 FLASH_SIZE = 1024
 else
@@ -232,28 +231,15 @@ CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM1/CoreSupport/*.c \
 
 INCLUDE_DIRS   := $(INCLUDE_DIRS) \
                   $(STDPERIPH_DIR)/inc \
-                  $(USBOTG_DIR)/inc \
-                  $(USBCORE_DIR)/inc \
-                  $(USBCDC_DIR)/inc \
-                  $(CMSIS_DIR)/CM1/CoreSupport \
-                  $(CMSIS_DIR)/CM1/DeviceSupport/ST/STM32F4xx \
+                  $(CMSIS_DIR)/CM7/CoreSupport \
+                  $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/Include \
                   $(ROOT)/src/main/vcpf4
 
-ARCH_FLAGS      = -mthumb -mcpu=cortex-m4 -march=armv7e-m -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fsingle-precision-constant -Wdouble-promotion
-DEVICE_FLAGS    = -DSTM32F40_41xxx
-ifeq ($(TARGET),ANYFC)
+ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
+DEVICE_FLAGS    = -DSTM32F745xx -DUSE_HAL_DRIVER
+ifeq ($(TARGET),MODULOF7)
 DEVICE_FLAGS   += -DHSE_VALUE=8000000
-LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405.ld
-.DEFAULT_GOAL  := binary
-endif
-ifeq ($(TARGET),REVO)
-DEVICE_FLAGS   += -DHSE_VALUE=8000000
-LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405_bl.ld
-.DEFAULT_GOAL  := binary
-endif
-ifeq ($(TARGET),COLIBRI)
-DEVICE_FLAGS   += -DHSE_VALUE=16000000
-LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405_bl.ld
+LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
 .DEFAULT_GOAL  := binary
 endif
 TARGET_FLAGS   = -D$(TARGET)
@@ -263,35 +249,31 @@ else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7))
 
 STDPERIPH_DIR  = $(ROOT)/lib/main/STM32F7xx_HAL_Driver
 STDPERIPH_SRC  = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*.c))
-#EXCLUDES       = stm32f4xx_crc.c \
-#                 stm32f4xx_can.c \
-#                 stm32f4xx_fmc.c \
-#                 stm32f4xx_sai.c
+EXCLUDES       = stm32f7xx_hal_timebase_rtc_alarm_template.c \
+                 stm32f7xx_hal_timebase_rtc_wakeup_template.c
+
 STDPERIPH_SRC := $(filter-out ${EXCLUDES}, $(STDPERIPH_SRC))
 
-USBCORE_DIR = $(ROOT)/lib/main/STM32_USB_Device_Library/Core
-USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/src/*.c))
+#USBCORE_DIR = $(ROOT)/lib/main/STM32_USB_Device_Library/Core
+#USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/src/*.c))
 
-USBOTG_DIR = $(ROOT)/lib/main/STM32_USB_OTG_Driver
-USBOTG_SRC = $(notdir $(wildcard $(USBOTG_DIR)/src/*.c))
-EXCLUDES   = usb_bsp_template.c \
-             usb_hcd_int.c \
-             usb_hcd.c \
-             usb_otg.c
+#USBOTG_DIR = $(ROOT)/lib/main/STM32_USB_OTG_Driver
+#USBOTG_SRC = $(notdir $(wildcard $(USBOTG_DIR)/src/*.c))
+#EXCLUDES   = usb_bsp_template.c \
+#             usb_hcd_int.c \
+#             usb_hcd.c \
+#             usb_otg.c
 
-USBOTG_SRC := $(filter-out ${EXCLUDES}, $(USBOTG_SRC))
+#USBOTG_SRC := $(filter-out ${EXCLUDES}, $(USBOTG_SRC))
 
-USBCDC_DIR  = $(ROOT)/lib/main/STM32_USB_Device_Library/Class/cdc
-USBCDC_SRC  = $(notdir $(wildcard $(USBCDC_DIR)/src/*.c))
-EXCLUDES    = usbd_cdc_if_template.c
-USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
+#USBCDC_DIR  = $(ROOT)/lib/main/STM32_USB_Device_Library/Class/cdc
+#USBCDC_SRC  = $(notdir $(wildcard $(USBCDC_DIR)/src/*.c))
+#EXCLUDES    = usbd_cdc_if_template.c
+#USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
 
 VPATH := $(VPATH):$(USBOTG_DIR)/src:$(USBCORE_DIR)/src:$(USBCDC_DIR)/src
 
-DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
-                        $(USBOTG_SRC) \
-                        $(USBCORE_SRC) \
-                        $(USBCDC_SRC) 
+DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC)
 
 VPATH     := $(VPATH):$(CMSIS_DIR)/CM7/CoreSupport:$(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx
 CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM7/CoreSupport/*.c \
@@ -576,7 +558,7 @@ COMMON_SRC = \
             sensors/initialisation.c \
             $(CMSIS_SRC) \
             $(DEVICE_STDPERIPH_SRC)
-
+            
 HIGHEND_SRC = \
             blackbox/blackbox.c \
             blackbox/blackbox_io.c \
@@ -895,6 +877,30 @@ REVO_SRC = \
             io/flashfs.c \
             $(HIGHEND_SRC) \
             $(COMMON_SRC) \
+            $(VCPF4_SRC)
+            
+MODULOF7_SRC = \
+            drivers/system_stm32f7xx.c \
+            drivers/accgyro_mpu.c \
+            drivers/accgyro_spi_mpu6000.c \
+            drivers/bus_i2c_stm32f7xx.c \
+            drivers/bus_spi_hal.c \
+            drivers/gpio_stm32f7xx.c \
+            drivers/inverter.c \
+            drivers/light_led_stm32f7xx.c \
+            drivers/pwm_mapping.c \
+            drivers/pwm_output_hal.c \
+            drivers/pwm_rx.c \
+            drivers/serial_escserial.c \
+            drivers/serial_uart_hal.c \
+            drivers/sound_beeper_stm32f7xx.c \
+            drivers/timer.c \
+            drivers/timer_stm32f7xx.c \
+            drivers/flash_m25p16.c \
+            io/flashfs.c \
+            $(HIGHEND_SRC) \
+            $(COMMON_SRC) \
+            startup_stm32f745xx.s \
             $(VCPF4_SRC)
 
 STM32F30x_COMMON_SRC = \
