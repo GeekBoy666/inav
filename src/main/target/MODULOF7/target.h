@@ -16,22 +16,34 @@
  */
 
 #pragma once
-#define TARGET_BOARD_IDENTIFIER "REVO"
 
-#define LED0_GPIO   GPIOB
-#define LED0_PIN    Pin_5 // Blue LEDs - PB5
-#define LED0_PERIPHERAL RCC_AHB1Periph_GPIOB
-#define LED1_GPIO   GPIOB
-#define LED1_PIN    Pin_4  // Orange LEDs - PB4
-#define LED1_PERIPHERAL RCC_AHB1Periph_GPIOB
+#include "../portable.h"
 
-#define INVERTER_PIN Pin_0 // PC0 used as inverter select GPIO
-#define INVERTER_GPIO GPIOC
-#define INVERTER_PERIPHERAL RCC_AHB1Periph_GPIOC
-#define INVERTER_USART USART1
+#define TARGET_BOARD_IDENTIFIER "MODULOF7"
+
+#define USE_QUAD_MIXER_ONLY
+
+#define USE_HAL_DRIVER
+
+#define FLASH_SIZE (1024)
+#define FLASH_PAGE_COUNT FLASH_SECTOR_TOTAL
+#define FLASH_PAGE_SIZE ((FLASH_SIZE*1024)/FLASH_SECTOR_TOTAL)
+
+#define LED0_GPIO   GPIOE
+#define LED0_PIN    Pin_15 // LED1 PE15
+#define LED0_PERIPHERAL RCC_AHB1Periph_GPIOE
+#define LED1_GPIO   GPIOE
+#define LED1_PIN    Pin_12  // LED2 PE12
+#define LED1_PERIPHERAL RCC_AHB1Periph_GPIOE
+
+//#define INVERTER_PIN Pin_0 // PC0 used as inverter select GPIO
+//#define INVERTER_GPIO GPIOC
+//#define INVERTER_PERIPHERAL RCC_AHB1Periph_GPIOC
+//#define INVERTER_USART USART1
 
 #define MPU6000_CS_GPIO       GPIOA
-#define MPU6000_CS_PIN        GPIO_Pin_4
+#define MPU6000_CS_PIN        Pin_15
+SPI_HandleTypeDef SPI1_Handle;
 #define MPU6000_SPI_INSTANCE  SPI1
 
 //#define DEBUG_MPU_DATA_READY_INTERRUPT
@@ -45,33 +57,33 @@
 #define USE_GYRO_SPI_MPU6000
 #define GYRO_MPU6000_ALIGN CW270_DEG
 
-#define MAG
-//#define USE_MAG_HMC5883
-#define HMC5883_BUS I2C_DEVICE_INT
-#define MAG_HMC5883_ALIGN CW90_DEG
+//#define MAG
+////#define USE_MAG_HMC5883
+//#define HMC5883_BUS I2C_DEVICE_INT
+//#define MAG_HMC5883_ALIGN CW90_DEG
 
 #define BARO
-#define USE_BARO_MS5611
-#define MS5611_BUS I2C_DEVICE_INT
+#define USE_BARO_BMP280
+#define BMP280_BUS I2C_DEVICE_INT
 
-#define PITOT
+//#define PITOT
 //#define USE_PITOT_MS4525
-#define MS4525_BUS I2C_DEVICE_EXT
+//#define MS4525_BUS I2C_DEVICE_EXT
 
 #define I2CGPS_BUS I2C_DEVICE_INT
 
-#define INVERTER
+//#define INVERTER
 #define LED0
 #define LED1
 
-#define M25P16_CS_GPIO        GPIOB
-#define M25P16_CS_PIN         GPIO_Pin_3
-#define M25P16_SPI_INSTANCE   SPI3
+//#define M25P16_CS_GPIO        GPIOB
+//#define M25P16_CS_PIN         GPIO_Pin_3
+//#define M25P16_SPI_INSTANCE   SPI3
 
-#define USE_FLASHFS
-#define USE_FLASH_M25P16
+//#define USE_FLASHFS
+//#define USE_FLASH_M25P16
 
-#define USABLE_TIMER_CHANNEL_COUNT 12
+#define USABLE_TIMER_CHANNEL_COUNT 24
 
 #define USE_VCP
 
@@ -79,31 +91,39 @@
 #define USART1_RX_PIN Pin_10
 #define USART1_TX_PIN Pin_9
 #define USART1_GPIO GPIOA
-#define USART1_APB2_PERIPHERALS RCC_APB2Periph_USART1
-#define USART1_AHB1_PERIPHERALS RCC_AHB1Periph_GPIOA|RCC_AHB1Periph_DMA2
+#define USE_USART1_RX_DMA false
+#define USE_USART1_TX_DMA true
 
-#define USE_USART3
-#define USART3_RX_PIN Pin_11
-#define USART3_TX_PIN Pin_10
-#define USART3_GPIO GPIOB
-#define USART3_APB1_PERIPHERALS RCC_APB1Periph_USART3
-#define USART3_AHB1_PERIPHERALS RCC_AHB1Periph_GPIOB
 
-#define USE_USART6
-#define USART6_RX_PIN Pin_7
-#define USART6_TX_PIN Pin_6
-#define USART6_GPIO GPIOC
-#define USART6_APB2_PERIPHERALS RCC_APB2Periph_USART6
-#define USART6_AHB1_PERIPHERALS RCC_AHB1Periph_GPIOC
+//#define USE_USART2
+//#define USART2_RX_PIN Pin_7
+//#define USART2_TX_PIN Pin_6
+//#define USART2_GPIO GPIOC
 
-#define SERIAL_PORT_COUNT 4
+//#define USE_USART3
+//#define USART3_RX_PIN Pin_11
+//#define USART3_TX_PIN Pin_10
+//#define USART3_GPIO GPIOB
+
+//#define USE_USART4
+//#define USART4_RX_PIN Pin_7
+//#define USART4_TX_PIN Pin_6
+//#define USART4_GPIO GPIOC
+
+//#define USE_USART6
+//#define USART6_RX_PIN Pin_7
+//#define USART6_TX_PIN Pin_6
+//#define USART6_GPIO GPIOC
+
+#define SERIAL_PORT_COUNT (6) // 5 x U(S)ART 1x USB vcp
+#define UART_INDEX_MAX (8)
 
 //#define USE_ESCSERIAL
 #define ESCSERIAL_TIMER_TX_HARDWARE 0 // PWM 1
 
 #define USE_SPI
 #define USE_SPI_DEVICE_1
-#define USE_SPI_DEVICE_3
+//#define USE_SPI_DEVICE_3
 
 #define USE_I2C
 #define I2C_DEVICE_INT (I2CDEV_1)
@@ -111,8 +131,8 @@
 
 #define SENSORS_SET (SENSOR_ACC|SENSOR_MAG|SENSOR_BARO)
 
-#define LED_STRIP
-#define LED_STRIP_TIMER TIM5
+//#define LED_STRIP
+//#define LED_STRIP_TIMER TIM5
 
 #define GPS
 #define GPS_PROTO_NMEA
@@ -135,7 +155,7 @@
 #define UG2864_BUS I2C_DEVICE_EXT
 #define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
-#define USED_TIMERS  ( TIM_N(2) | TIM_N(3) | TIM_N(5) | TIM_N(12) | TIM_N(8) | TIM_N(9))
+#define USED_TIMERS  ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(8) | TIM_N(9) | TIM_N(10) | TIM_N(11) | TIM_N(12) | TIM_N(13) | TIM_N(14))
 
 #define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM5 | RCC_APB1Periph_TIM12 | RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC)
 #define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM8 | RCC_APB2Periph_TIM9)

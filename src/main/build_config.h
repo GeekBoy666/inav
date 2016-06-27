@@ -17,7 +17,9 @@
 
 #pragma once
 
+#ifndef UNUSED
 #define UNUSED(x) (void)(x)
+#endif
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
 #ifdef UNIT_TEST
