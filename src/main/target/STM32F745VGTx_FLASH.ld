@@ -4,8 +4,8 @@
 
 **  File        : LinkerScript.ld
 **
-**  Abstract    : Linker script for STM32F745VGTx Device with
-**                1024KByte FLASH, 340KByte RAM
+**  Abstract    : Linker script for STM32F746ZGTx Device with
+**                1024KByte FLASH, 320KByte RAM
 **
 **                Set heap size, stack size and stack location according
 **                to application requirements.
@@ -28,33 +28,40 @@
 **
 *****************************************************************************
 */
-/* Entry Point */
 
-_Min_Heap_Size = 0;      /* required amount of heap  */
+/* Entry Point */
+ENTRY(Reset_Handler)
+
+/* Highest address of the user mode stack */
+_estack = 0x20050000;    /* end of RAM */
+/* Generate a link error if heap and stack don't fit into RAM */
+_Min_Heap_Size = 0x200;      /* required amount of heap  */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
 /* Specify the memory areas */
 MEMORY
 {
-	FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 0x040000 - 0x64
-	INFOX (rx)      : ORIGIN = 0x08000000 + 0x040000 - 0x64, LENGTH = 0x64
-	RAM (xrw)       : ORIGIN = 0x20000000, LENGTH = 128K
-	MEMORY_B1 (rx)  : ORIGIN = 0x60000000, LENGTH = 0K
+FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K
+RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
 }
 
 /* Define output sections */
 SECTIONS
 {
+  /* The startup code goes first into FLASH */
+  .isr_vector :
+  {
+    . = ALIGN(4);
+    KEEP(*(.isr_vector)) /* Startup code */
+    . = ALIGN(4);
+  } >FLASH
+
   /* The program code and other data goes into FLASH */
   .text :
   {
-    PROVIDE (isr_vector_table_base = .);
-    KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
-    *(.rodata)         /* .rodata sections (constants, strings, etc.) */
-    *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     *(.glue_7)         /* glue arm to thumb code */
     *(.glue_7t)        /* glue thumb to arm code */
     *(.eh_frame)
@@ -66,6 +73,14 @@ SECTIONS
     _etext = .;        /* define a global symbols at end of code */
   } >FLASH
 
+  /* Constant data goes into FLASH */
+  .rodata :
+  {
+    . = ALIGN(4);
+    *(.rodata)         /* .rodata sections (constants, strings, etc.) */
+    *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
+    . = ALIGN(4);
+  } >FLASH
 
   .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH
   .ARM : {
@@ -90,26 +105,13 @@ SECTIONS
   .fini_array :
   {
     PROVIDE_HIDDEN (__fini_array_start = .);
-    KEEP (*(.fini_array*))
     KEEP (*(SORT(.fini_array.*)))
+    KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >FLASH
 
   /* used by the startup to initialize data */
-  /* used by the startup to initialize data */
-  _sidata = .;
-
-  /*
-   * Place the IRQ/bootstrap stack at the bottom of SRAM so that an overflow
-   * results in a hard fault.
-   */
-  .istack (NOLOAD) :
-  {
-    . = ALIGN(4);
-    _irq_stack_end = . ;
-    *(.irqstack)
-    _irq_stack_top = . ;
-  } > RAM
+  _sidata = LOADADDR(.data);
 
   /* Initialized data sections goes into RAM, load LMA copy after code */
   .data : 
@@ -122,6 +124,7 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
   } >RAM AT> FLASH
+
   
   /* Uninitialized data section */
   . = ALIGN(4);
@@ -152,14 +155,6 @@ SECTIONS
 
   
 
-  .memory_b1_text :
-  {
-    *(.mb1text)        /* .mb1text sections (code) */
-    *(.mb1text*)       /* .mb1text* sections (code)  */
-    *(.mb1rodata)      /* read-only data (constants) */
-    *(.mb1rodata*)
-  } >MEMORY_B1
-
   /* Remove information from the standard libraries */
   /DISCARD/ :
   {
@@ -170,3 +165,4 @@ SECTIONS
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
 }
+

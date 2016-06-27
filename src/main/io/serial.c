@@ -75,6 +75,12 @@ const serialPortIdentifier_e serialPortIdentifiers[SERIAL_PORT_COUNT] = {
 #ifdef USE_USART6
     SERIAL_PORT_USART6,
 #endif
+#ifdef USE_USART7
+    SERIAL_PORT_USART8,
+#endif
+#ifdef USE_USART8
+    SERIAL_PORT_USART8,
+#endif
 #ifdef USE_SOFTSERIAL1
     SERIAL_PORT_SOFTSERIAL1,
 #endif
