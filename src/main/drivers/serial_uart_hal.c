@@ -148,24 +148,6 @@ void MCU_UART##X##_DMA_RX_IRQHandler(void)\
     #define UART8CONFIG UART_X_CONFIG(8)
 #endif
     
-/*#ifdef USE_USART1
-    static uartPort_t uartPort1;
-    static volatile uint8_t RX1Buffer[UART1_RX_BUFFER_SIZE];
-    static volatile uint8_t TX1Buffer[UART1_TX_BUFFER_SIZE];
-    static DMA_HandleTypeDef hdma_TX1;
-    static DMA_HandleTypeDef hdma_RX1;
-    
-    UARTxIRQHANDLERS(1)
-
-    #define UART1CONFIG {\
-        &uartPort1,\
-        USART1,\
-        USART1_IRQn,\
-        UART_X_TXRX_CONFIG(1,TX),\
-        UART_X_TXRX_CONFIG(1,RX)\
-    }
-#endi*/
-    
 uartConfig_t uartFindConfig(USART_TypeDef *USARTx)
 {
     if (USARTx == USART1) {
