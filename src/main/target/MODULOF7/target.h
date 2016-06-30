@@ -21,7 +21,7 @@
 
 #define TARGET_BOARD_IDENTIFIER "MODULOF7"
 
-//#define USE_QUAD_MIXER_ONLY
+#define USE_QUAD_MIXER_ONLY
 
 #define USE_HAL_DRIVER
 
@@ -128,6 +128,22 @@ SPI_HandleTypeDef SPI1_Handle;
 #define USE_I2C
 #define I2C_DEVICE_INT (I2CDEV_1)
 #define I2C_DEVICE_EXT (I2CDEV_2)
+
+#define I2C1_SCL_GPIO GPIOB
+#define I2C1_SCL_PIN Pin_6
+#define I2C1_SDA_GPIO GPIOB
+#define I2C1_SDA_PIN Pin_7
+
+#define I2C2_SCL_GPIO GPIOB
+#define I2C2_SCL_PIN Pin_10
+#define I2C2_SDA_GPIO GPIOB
+#define I2C2_SDA_PIN Pin_11
+
+#define I2C3_SCL_GPIO GPIOA
+#define I2C3_SCL_PIN Pin_8
+#define I2C3_SDA_GPIO GPIOC
+#define I2C3_SDA_PIN Pin_9
+
 
 #define SENSORS_SET (SENSOR_ACC|SENSOR_MAG|SENSOR_BARO)
 
