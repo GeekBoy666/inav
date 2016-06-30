@@ -883,25 +883,25 @@ MODULOF7_SRC = \
             drivers/system_stm32f7xx.c \
             drivers/accgyro_mpu.c \
             drivers/accgyro_spi_mpu6000.c \
-            drivers/bus_i2c_stm32f7xx.c \
+            drivers/bus_i2c_hal.c \
             drivers/bus_spi_hal.c \
             drivers/gpio_stm32f7xx.c \
             drivers/inverter.c \
-            drivers/light_led_stm32f7xx.c \
+            drivers/light_led_hal.c \
             drivers/pwm_mapping.c \
             drivers/pwm_output_hal.c \
             drivers/pwm_rx.c \
             drivers/serial_escserial.c \
             drivers/serial_uart_hal.c \
             drivers/sound_beeper_stm32f7xx.c \
-            drivers/timer.c \
-            drivers/timer_stm32f7xx.c \
+            drivers/timer_hal.c \
             drivers/flash_m25p16.c \
             io/flashfs.c \
             $(HIGHEND_SRC) \
             $(COMMON_SRC) \
-            startup_stm32f745xx.s \
-            $(VCPF4_SRC)
+            startup_stm32f745xx.s 
+            
+#            $(VCPF4_SRC)
 
 STM32F30x_COMMON_SRC = \
             startup_stm32f30x_md_gcc.S \
