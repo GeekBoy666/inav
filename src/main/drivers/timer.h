@@ -38,6 +38,11 @@ typedef uint32_t timCCR_t;
 typedef uint32_t timCCER_t;
 typedef uint32_t timSR_t;
 typedef uint32_t timCNT_t;
+#elif defined(USE_HAL_DRIVER)
+typedef uint32_t timCCR_t;
+typedef uint32_t timCCER_t;
+typedef uint32_t timSR_t;
+typedef uint32_t timCNT_t;
 #elif defined(UNIT_TEST)
 typedef uint32_t timCCR_t;
 typedef uint32_t timCCER_t;
@@ -70,11 +75,7 @@ typedef struct {
     uint8_t irq;
     uint8_t outputEnable;
     GPIO_Mode gpioInputMode;
-#ifdef STM32F303
-    uint8_t gpioPinSource;             // TODO - this can be removed and pinSource calculated from pin
-    uint8_t alternateFunction;
-#endif
-#ifdef STM32F40_41xxx
+#if  defined(STM32F303) || defined(STM32F40_41xxx) || defined(USE_HAL_DRIVER)
     uint8_t gpioPinSource;             // TODO - this can be removed and pinSource calculated from pin
     uint8_t alternateFunction;
 #endif
@@ -109,12 +110,12 @@ volatile timCCR_t* timerChCCR(const timerHardware_t* timHw);
 volatile timCCR_t* timerChCCRLo(const timerHardware_t* timHw);
 volatile timCCR_t* timerChCCRHi(const timerHardware_t* timHw);
 void timerChConfigOC(const timerHardware_t* timHw, bool outEnable, bool stateHigh);
-void timerChConfigGPIO(const timerHardware_t* timHw, GPIO_Mode mode);
+//void timerChConfigGPIO(const timerHardware_t* timHw, GPIO_Mode mode);
 
 void timerChCCHandlerInit(timerCCHandlerRec_t *self, timerCCHandlerCallback *fn);
 void timerChOvrHandlerInit(timerOvrHandlerRec_t *self, timerOvrHandlerCallback *fn);
 void timerChConfigCallbacks(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallback, timerOvrHandlerRec_t *overflowCallback);
-void timerChConfigCallbacksDual(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallbackLo, timerCCHandlerRec_t *edgeCallbackHi, timerOvrHandlerRec_t *overflowCallback);
+//void timerChConfigCallbacksDual(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallbackLo, timerCCHandlerRec_t *edgeCallbackHi, timerOvrHandlerRec_t *overflowCallback);
 void timerChITConfigDualLo(const timerHardware_t* timHw, FunctionalState newState);
 void timerChITConfig(const timerHardware_t* timHw, FunctionalState newState);
 void timerChClearCCFlag(const timerHardware_t* timHw);
