@@ -17,6 +17,37 @@
 
 #pragma once
 
+#ifdef USE_HAL_DRIVER
+
+#ifndef SPI_DEFAULT_TIMEOUT
+#define SPI_DEFAULT_TIMEOUT (1000)
+#endif
+
+typedef enum{
+    LOW_SPEED_SPI = 0,
+    MEDIUM_SPEED_SPI,
+    HIGH_SPEED_SPI,
+    MAX_SPEED_SPI = HIGH_SPEED_SPI
+} SpiSpeed_t;
+
+typedef enum {
+    SPIDEV_1,
+    SPIDEV_2,
+    SPIDEV_3,
+    SPIDEV_MAX = SPIDEV_3,
+} SPIDevice;
+
+bool spiInit(SPIDevice instance);
+void spiSetDivisor(SPIDevice instance, SpiSpeed_t speed);
+uint8_t spiTransferByte(SPIDevice instance, uint8_t in);
+
+bool spiTransfer(SPIDevice instance, uint8_t *out, const uint8_t *in, int len);
+
+uint16_t spiGetErrorCounter(SPIDevice instance);
+void spiResetErrorCounter(SPIDevice instance);
+
+#else
+
 #if defined(STM32F40_41xxx)
 #define LOW_SPEED_SPI       128 // 0.65625 MHz
 #define MEDIUM_SPEED_SPI    8   // 11.5 MHz
@@ -35,3 +66,4 @@ bool spiTransfer(SPI_TypeDef *instance, uint8_t *out, const uint8_t *in, int len
 
 uint16_t spiGetErrorCounter(SPI_TypeDef *instance);
 void spiResetErrorCounter(SPI_TypeDef *instance);
+#endif
