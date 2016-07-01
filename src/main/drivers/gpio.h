@@ -71,7 +71,7 @@ typedef enum
 } GPIO_Mode;
 #endif
 
-#ifdef STM32F40_41xxx
+#if defined(STM32F40_41xxx)
 
 /*
 typedef enum
@@ -111,6 +111,46 @@ typedef enum
 } GPIO_Mode;
 #endif
 
+#if defined(STM32F745xx)
+
+/*
+typedef enum
+{
+  GPIO_Mode_IN   = 0x00, // GPIO Input Mode
+  GPIO_Mode_OUT  = 0x01, // GPIO Output Mode
+  GPIO_Mode_AF   = 0x02, // GPIO Alternate function Mode
+  GPIO_Mode_AN   = 0x03  // GPIO Analog In/Out Mode
+}GPIOMode_TypeDef;
+
+typedef enum
+{
+  GPIO_OType_PP = 0x00,
+  GPIO_OType_OD = 0x01
+}GPIOOType_TypeDef;
+
+typedef enum
+{
+  GPIO_PuPd_NOPULL = 0x00,
+  GPIO_PuPd_UP     = 0x01,
+  GPIO_PuPd_DOWN   = 0x02
+}GPIOPuPd_TypeDef;
+*/
+
+typedef enum
+{
+    Mode_AIN =          (GPIO_NOPULL << 8) | GPIO_MODE_ANALOG,
+    Mode_IN_FLOATING =  (GPIO_NOPULL << 8) | GPIO_MODE_INPUT,
+    Mode_IPD =          (GPIO_PULLDOWN   << 8) | GPIO_MODE_INPUT,
+    Mode_IPU =          (GPIO_PULLUP     << 8) | GPIO_MODE_INPUT,
+    Mode_Out_OD =       GPIO_MODE_OUTPUT_PP,
+    Mode_Out_PP =       GPIO_MODE_OUTPUT_PP,
+    Mode_AF_OD =        GPIO_MODE_AF_OD,
+    Mode_AF_PP =        GPIO_MODE_AF_PP,
+    Mode_AF_PP_PD =     (GPIO_PULLDOWN  << 8) | GPIO_MODE_AF_PP,
+    Mode_AF_PP_PU =     (GPIO_PULLUP    << 8) | GPIO_MODE_AF_PP
+} GPIO_Mode;
+#endif
+
 typedef enum
 {
     Speed_10MHz = 1,
@@ -147,7 +187,7 @@ typedef struct
 } gpio_config_t;
 
 #ifndef UNIT_TEST
-#ifdef STM32F40_41xxx
+#if defined(STM32F40_41xxx) || defined(STM32F745xx)
 static inline void digitalHi(GPIO_TypeDef *p, uint16_t i) { p->BSRRL = i; }
 static inline void digitalLo(GPIO_TypeDef *p, uint16_t i)     { p->BSRRH = i; }
 #else
