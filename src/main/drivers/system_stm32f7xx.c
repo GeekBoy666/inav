@@ -64,6 +64,7 @@
   */
 
 #include "stm32f7xx.h"
+#include "target/portable.h"
 
 #if !defined  (HSE_VALUE)
   #define HSE_VALUE    ((uint32_t)25000000) /*!< Default value of the External oscillator in Hz */
@@ -226,9 +227,25 @@ void SystemInit(void)
 #else
   SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH */
 #endif
+  
+  /* Enable I-Cache */
+  SCB_EnableICache();
+
+  /* Enable D-Cache */
+  SCB_EnableDCache();
 
   /* Configure the system clock to 216 MHz */
   SystemClock_Config();
+  
+  if(SystemCoreClock != MCU_SYS_CLK)
+  {
+      while(1)
+      {
+          // There is a mismatch between the configured clock and the expected clock in portable.h
+      }
+  }
+  
+
 }
 
 /**
