@@ -46,6 +46,11 @@ typedef uint32_t timCCR_t;
 typedef uint32_t timCCER_t;
 typedef uint32_t timSR_t;
 typedef uint32_t timCNT_t;
+#elif defined(USE_HAL_DRIVER)
+typedef uint32_t timCCR_t;
+typedef uint32_t timCCER_t;
+typedef uint32_t timSR_t;
+typedef uint32_t timCNT_t;
 #elif defined(UNIT_TEST)
 typedef uint32_t timCCR_t;
 typedef uint32_t timCCER_t;
@@ -83,7 +88,7 @@ typedef struct timerHardware_s {
     uint8_t irq;
     uint8_t output;
     ioConfig_t ioMode;
-#if defined(STM32F3) || defined(STM32F4)
+#if defined(STM32F3) || defined(STM32F4) || defined(USE_HAL_DRIVER)
     uint8_t alternateFunction;
 #endif
 #ifdef STM32F40_41xxx
@@ -144,7 +149,7 @@ void timerChConfigGPIO(const timerHardware_t* timHw, ioConfig_t mode);
 void timerChCCHandlerInit(timerCCHandlerRec_t *self, timerCCHandlerCallback *fn);
 void timerChOvrHandlerInit(timerOvrHandlerRec_t *self, timerOvrHandlerCallback *fn);
 void timerChConfigCallbacks(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallback, timerOvrHandlerRec_t *overflowCallback);
-void timerChConfigCallbacksDual(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallbackLo, timerCCHandlerRec_t *edgeCallbackHi, timerOvrHandlerRec_t *overflowCallback);
+//void timerChConfigCallbacksDual(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallbackLo, timerCCHandlerRec_t *edgeCallbackHi, timerOvrHandlerRec_t *overflowCallback);
 void timerChITConfigDualLo(const timerHardware_t* timHw, FunctionalState newState);
 void timerChITConfig(const timerHardware_t* timHw, FunctionalState newState);
 void timerChClearCCFlag(const timerHardware_t* timHw);
@@ -156,4 +161,3 @@ void timerStart(void);
 void timerForceOverflow(TIM_TypeDef *tim);
 
 void configTimeBase(TIM_TypeDef *tim, uint16_t period, uint8_t mhz);  // TODO - just for migration
-
