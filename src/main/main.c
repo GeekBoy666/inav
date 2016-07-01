@@ -337,9 +337,16 @@ void init(void)
 
 
 #ifdef USE_SPI
+#ifdef USE_HAL_DRIVER
+    spiInit(SPIDEV_1);
+    spiInit(SPIDEV_2);
+    spiInit(SPIDEV_3);
+#else
     spiInit(SPI1);
     spiInit(SPI2);
     spiInit(SPI3);
+#endif
+
 #endif
 
 #ifdef USE_HARDWARE_REVISION_DETECTION

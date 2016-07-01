@@ -21,20 +21,22 @@
 
 #define TARGET_BOARD_IDENTIFIER "MODULOF7"
 
-#define USE_QUAD_MIXER_ONLY
+//#define USE_QUAD_MIXER_ONLY
 
+#ifndef USE_HAL_DRIVER
 #define USE_HAL_DRIVER
+#endif
 
+#ifndef FLASH_SIZE
 #define FLASH_SIZE (1024)
+#endif
 #define FLASH_PAGE_COUNT FLASH_SECTOR_TOTAL
 #define FLASH_PAGE_SIZE ((FLASH_SIZE*1024)/FLASH_SECTOR_TOTAL)
 
 #define LED0_GPIO   GPIOE
 #define LED0_PIN    Pin_15 // LED1 PE15
-#define LED0_PERIPHERAL RCC_AHB1Periph_GPIOE
 #define LED1_GPIO   GPIOE
 #define LED1_PIN    Pin_12  // LED2 PE12
-#define LED1_PERIPHERAL RCC_AHB1Periph_GPIOE
 
 //#define INVERTER_PIN Pin_0 // PC0 used as inverter select GPIO
 //#define INVERTER_GPIO GPIOC
@@ -43,19 +45,18 @@
 
 #define MPU6000_CS_GPIO       GPIOA
 #define MPU6000_CS_PIN        Pin_15
-SPI_HandleTypeDef SPI1_Handle;
-#define MPU6000_SPI_INSTANCE  SPI1
+#define MPU6000_SPI_INSTANCE  SPIDEV_1
 
 //#define DEBUG_MPU_DATA_READY_INTERRUPT
 #define USE_MPU_DATA_READY_SIGNAL
 
 #define ACC
-#define USE_ACC_SPI_MPU6000
-#define ACC_MPU6000_ALIGN CW270_DEG
+#define USE_ACC_SPI_MPU6500
+#define ACC_MPU6500_ALIGN CW270_DEG
 
 #define GYRO
-#define USE_GYRO_SPI_MPU6000
-#define GYRO_MPU6000_ALIGN CW270_DEG
+#define USE_GYRO_SPI_MPU6500
+#define GYRO_MPU6500_ALIGN CW270_DEG
 
 //#define MAG
 ////#define USE_MAG_HMC5883
@@ -123,6 +124,35 @@ SPI_HandleTypeDef SPI1_Handle;
 
 #define USE_SPI
 #define USE_SPI_DEVICE_1
+#define SPI1_SCK_GPIO   GPIOB
+#define SPI1_SCK_PIN    Pin_3
+#define SPI1_NSS_GPIO   GPIOA
+#define SPI1_NSS_PIN    Pin_15
+#define SPI1_MISO_GPIO  GPIOB
+#define SPI1_MISO_PIN   Pin_4
+#define SPI1_MOSI_GPIO  GPIOB
+#define SPI1_MOSI_PIN   Pin_5
+
+#define USE_SPI_DEVICE_1
+#define SPI2_SCK_GPIO   GPIOB
+#define SPI2_SCK_PIN    Pin_13
+#define SPI2_NSS_GPIO   GPIOB
+#define SPI2_NSS_PIN    Pin_12
+#define SPI2_MISO_GPIO  GPIOB
+#define SPI2_MISO_PIN   Pin_14
+#define SPI2_MOSI_GPIO  GPIOB
+#define SPI2_MOSI_PIN   Pin_15
+
+#define USE_SPI_DEVICE_1
+#define SPI3_SCK_GPIO   GPIOC
+#define SPI3_SCK_PIN    Pin_10
+#define SPI3_NSS_GPIO   GPIOA
+#define SPI3_NSS_PIN    Pin_4
+#define SPI3_MISO_GPIO  GPIOC
+#define SPI3_MISO_PIN   Pin_11
+#define SPI3_MOSI_GPIO  GPIOC
+#define SPI3_MOSI_PIN   Pin_12
+
 //#define USE_SPI_DEVICE_3
 
 #define USE_I2C

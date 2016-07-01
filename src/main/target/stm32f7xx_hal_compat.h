@@ -2,6 +2,7 @@
 #define STM32F7XX_HAL_COMPAT_H
 
 #include "stm32f7xx.h"
+#include "stm32f7xx_hal.h"
 
 // map some 'old' std driver functions to the new HAL
 
