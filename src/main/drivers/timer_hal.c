@@ -210,6 +210,15 @@ void timerNVICConfigure(uint8_t irq)
     HAL_NVIC_EnableIRQ(irq);
 }
 
+TIM_HandleTypeDef* timerFindTimerHandle(TIM_TypeDef *tim)
+{
+    uint8_t timerIndex = lookupTimerIndex(tim);
+    if (timerIndex >= USED_TIMER_COUNT)
+        return NULL;
+        
+    return &timeHandle[timerIndex].Handle;
+}
+
 void configTimeBase(TIM_TypeDef *tim, uint16_t period, uint8_t mhz)
 {
     uint8_t timerIndex = lookupTimerIndex(tim);
@@ -231,8 +240,13 @@ void configTimeBase(TIM_TypeDef *tim, uint16_t period, uint8_t mhz)
 // old interface for PWM inputs. It should be replaced
 void timerConfigure(const timerHardware_t *timerHardwarePtr, uint16_t period, uint8_t mhz)
 {
+    uint8_t timerIndex = lookupTimerIndex(timerHardwarePtr->tim);
+    if (timerIndex >= USED_TIMER_COUNT) {
+        return;
+    }
+    
     configTimeBase(timerHardwarePtr->tim, period, mhz);
-    TIM_Cmd(timerHardwarePtr->tim, ENABLE);
+    HAL_TIM_Base_Start(&timeHandle[timerIndex].Handle);
     timerNVICConfigure(timerHardwarePtr->irq);
     // HACK - enable second IRQ on timers that need it
     switch(timerHardwarePtr->irq) {

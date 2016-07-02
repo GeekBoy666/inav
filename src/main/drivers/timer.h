@@ -135,6 +135,10 @@ typedef enum {
     TYPE_TIMER
 } channelType_t;
 
+#ifdef USE_HAL_DRIVER
+    TIM_HandleTypeDef* timerFindTimerHandle(TIM_TypeDef *tim);
+#endif
+
 void timerConfigure(const timerHardware_t *timHw, uint16_t period, uint8_t mhz);  // This interface should be replaced.
 
 void timerChConfigIC(const timerHardware_t *timHw, bool polarityRising, unsigned inputFilterSamples);
