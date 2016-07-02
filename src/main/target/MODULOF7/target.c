@@ -23,17 +23,19 @@
 
 const uint16_t multiPPM[] = {
     PWM1  | (MAP_TO_PPM_INPUT << 8),     // PPM input
+    PWM2  | (MAP_TO_SERVO_OUTPUT << 8),      // Swap to servo if needed
+    PWM3  | (MAP_TO_SERVO_OUTPUT << 8),      // Swap to servo if needed
+    PWM4  | (MAP_TO_SERVO_OUTPUT << 8),
+    PWM5  | (MAP_TO_SERVO_OUTPUT << 8),
+    PWM6  | (MAP_TO_SERVO_OUTPUT << 8),
     PWM7  | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
     PWM8  | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
     PWM9  | (MAP_TO_MOTOR_OUTPUT << 8),
     PWM10 | (MAP_TO_MOTOR_OUTPUT << 8),
     PWM11 | (MAP_TO_MOTOR_OUTPUT << 8),
     PWM12 | (MAP_TO_MOTOR_OUTPUT << 8),
-    PWM2  | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
-    PWM3  | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
-    PWM4  | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
-    PWM5  | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
-    PWM6  | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
+    PWM13 | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
+    PWM14 | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
     0xFFFF
 };
 
@@ -50,6 +52,8 @@ const uint16_t multiPWM[] = {
     PWM10 | (MAP_TO_MOTOR_OUTPUT  << 8),
     PWM11 | (MAP_TO_MOTOR_OUTPUT  << 8),
     PWM12 | (MAP_TO_MOTOR_OUTPUT  << 8),     // motor #4 or #6
+    PWM13 | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
+    PWM14 | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
     0xFFFF
 };
 
@@ -66,6 +70,8 @@ const uint16_t airPPM[] = {
     PWM4  | (MAP_TO_SERVO_OUTPUT  << 8),
     PWM5  | (MAP_TO_SERVO_OUTPUT  << 8),
     PWM6  | (MAP_TO_SERVO_OUTPUT  << 8),
+    PWM13 | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
+    PWM14 | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
     0xFFFF
 };
 
@@ -82,6 +88,8 @@ const uint16_t airPWM[] = {
     PWM10 | (MAP_TO_SERVO_OUTPUT  << 8),     // servo #2
     PWM11 | (MAP_TO_SERVO_OUTPUT  << 8),     // servo #3
     PWM12 | (MAP_TO_SERVO_OUTPUT  << 8),     // servo #4
+    PWM13 | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
+    PWM14 | (MAP_TO_MOTOR_OUTPUT << 8),      // Swap to servo if needed
     0xFFFF
 };
 
