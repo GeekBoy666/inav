@@ -201,7 +201,7 @@ void systemInit(void)
     
     // Init clocks of used peripherals        
     #ifdef USE_USART1
-    __HAL_RCC_UART1_CLK_ENABLE();
+    __HAL_RCC_USART1_CLK_ENABLE();
     #endif
     #ifdef USE_USART2
     __HAL_RCC_UART2_CLK_ENABLE();
