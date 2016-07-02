@@ -17,6 +17,7 @@
 
 /*
  * Authors:
+ * npsm - rewrite for stm HAL and further hardware abstraction
  * Dominic Clifton - Serial port abstraction, Separation of common STM32 code for cleanflight, various cleanups.
  * Hamasaki/Timecop - Initial baseflight code
 */
@@ -172,6 +173,14 @@ uartConfig_t uartFindConfig(USART_TypeDef *USARTx)
 #ifdef USE_USART6
     } else if (USARTx == USART6) {
         return UART6CONFIG;
+#endif
+#ifdef USE_USART7
+    } else if (USARTx == USART7) {
+        return UART7CONFIG;
+#endif
+#ifdef USE_USART8
+    } else if (USARTx == USART8) {
+        return UART8CONFIG;
 #endif
     } else {
         uartConfig_t cfg = {0};
