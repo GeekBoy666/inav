@@ -140,8 +140,6 @@ bool i2cRead(uint8_t addr_, uint8_t reg_, uint8_t len, uint8_t* buf, I2CDevice b
 
 void i2cInit(I2CDevice bus)
 {
-    NVIC_InitTypeDef nvic;
-
     if (bus > I2CDEV_MAX)
         bus = I2CDEV_MAX;
 

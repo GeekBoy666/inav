@@ -129,7 +129,7 @@ bool spiInit(SPIDevice bus)
     GPIO_InitStruct.Pin       = spiHardwareMap[bus].Miso;
     HAL_GPIO_Init(spiHardwareMap[bus].gpioMiso, &GPIO_InitStruct);
     
-    /// TODO: Implement hardware nss handling
+    /// TODO: HAL Implement hardware nss handling
 #if 0
     GPIO_InitStruct.Pin       = spiHardwareMap[bus].Nss;
     HAL_GPIO_Init(spiHardwareMap[bus].gpioNss, &GPIO_InitStruct);
