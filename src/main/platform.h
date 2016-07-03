@@ -17,7 +17,7 @@
 
 #pragma once
 
-#ifdef STM32F745xx
+#if defined(STM32F745xx) || defined(STM32F767xx)
 #include "target/stm32f7xx_hal_compat.h"
 //#include "stm32f4xx_rcc.h"
 //#include "stm32f4xx_gpio.h"

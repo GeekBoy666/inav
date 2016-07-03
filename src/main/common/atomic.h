@@ -30,7 +30,7 @@ __attribute__( ( always_inline ) ) static inline void __set_BASEPRI_MAX_nb(uint3
 {
    __ASM volatile ("\tMSR basepri_max, %0\n" : : "r" (basePri) );
 }
-#ifndef STM32F745xx
+#ifndef STM32F7
 __attribute__( ( always_inline ) ) static inline void __set_BASEPRI_MAX(uint32_t basePri)
 {
     __ASM volatile ("\tMSR basepri_max, %0\n" : : "r" (basePri) : "memory" );

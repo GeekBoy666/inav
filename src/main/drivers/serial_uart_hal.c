@@ -108,7 +108,6 @@ void MCU_UART##X##_DMA_RX_IRQHandler(void)\
     HAL_DMA_IRQHandler(&hdma_RX##X);\
 }
 
-/// TODO: HAL Added other UARTS
 #ifdef USE_USART1    
     UARTxSETUP(1)
     #define UART1CONFIG UART_X_CONFIG(1)
@@ -304,8 +303,6 @@ static void uartReconfigure(uartPort_t *uartPort)
         HAL_UART_Init(&uartPort->Handle);
 }
 
-
-
 serialPort_t *uartOpen(USART_TypeDef *USARTx, serialReceiveCallbackPtr callback, uint32_t baudRate, portMode_t mode, portOptions_t options)
 {
     uartPort_t *s = NULL;
@@ -329,7 +326,6 @@ serialPort_t *uartOpen(USART_TypeDef *USARTx, serialReceiveCallbackPtr callback,
     uartReconfigure(s);
 
     // Receive DMA or IRQ
-    DMA_InitTypeDef DMA_InitStructure;
     if (mode & MODE_RX) 
     {
         if (s->rxDMAStream) 

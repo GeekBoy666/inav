@@ -111,30 +111,7 @@ typedef enum
 } GPIO_Mode;
 #endif
 
-#if defined(STM32F745xx)
-
-/*
-typedef enum
-{
-  GPIO_Mode_IN   = 0x00, // GPIO Input Mode
-  GPIO_Mode_OUT  = 0x01, // GPIO Output Mode
-  GPIO_Mode_AF   = 0x02, // GPIO Alternate function Mode
-  GPIO_Mode_AN   = 0x03  // GPIO Analog In/Out Mode
-}GPIOMode_TypeDef;
-
-typedef enum
-{
-  GPIO_OType_PP = 0x00,
-  GPIO_OType_OD = 0x01
-}GPIOOType_TypeDef;
-
-typedef enum
-{
-  GPIO_PuPd_NOPULL = 0x00,
-  GPIO_PuPd_UP     = 0x01,
-  GPIO_PuPd_DOWN   = 0x02
-}GPIOPuPd_TypeDef;
-*/
+#if defined(USE_HAL_DRIVER)
 
 typedef enum
 {
@@ -187,7 +164,7 @@ typedef struct
 } gpio_config_t;
 
 #ifndef UNIT_TEST
-#if defined(STM32F40_41xxx) || defined(STM32F745xx)
+#if defined(STM32F40_41xxx) || defined(STM32F7)
 static inline void digitalHi(GPIO_TypeDef *p, uint16_t i) { p->BSRRL = i; }
 static inline void digitalLo(GPIO_TypeDef *p, uint16_t i)     { p->BSRRH = i; }
 #else
