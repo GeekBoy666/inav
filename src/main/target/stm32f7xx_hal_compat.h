@@ -6,11 +6,16 @@
 
 // map some 'old' std driver functions to the new HAL
 
-#define EXTI_GetITStatus(x) __HAL_GPIO_EXTI_GET_IT(x)
-#define EXTI_ClearITPendingBit(x) __HAL_GPIO_EXTI_CLEAR_IT(x)
 
-#define GPIO_ResetBits(port, pin) HAL_GPIO_WritePin(port,pin,false);
-#define GPIO_SetBits(port, pin) HAL_GPIO_WritePin(port,pin,true);
+#define TIM_ICPolarity_Rising       TIM_ICPOLARITY_RISING
+#define TIM_ICPolarity_Falling      TIM_ICPOLARITY_FALLING
+#define TIM_ICSelection_DirectTI    TIM_ICSELECTION_DIRECTTI
+
+#define EXTI_GetITStatus(x)          __HAL_GPIO_EXTI_GET_IT(x)
+#define EXTI_ClearITPendingBit(x)   __HAL_GPIO_EXTI_CLEAR_IT(x)
+
+#define GPIO_ResetBits(port, pin)   HAL_GPIO_WritePin(port,pin,false);
+#define GPIO_SetBits(port, pin)     HAL_GPIO_WritePin(port,pin,true);
 
 void GPIO_StructInit(GPIO_InitTypeDef* GPIO_InitStruct);
 
