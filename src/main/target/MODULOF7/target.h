@@ -21,8 +21,6 @@
 
 #define TARGET_BOARD_IDENTIFIER "MODULOF7"
 
-//#define USE_QUAD_MIXER_ONLY
-
 #ifndef USE_HAL_DRIVER
 #define USE_HAL_DRIVER
 #endif
@@ -30,22 +28,47 @@
 #ifndef FLASH_SIZE
 #define FLASH_SIZE (1024)
 #endif
-#define FLASH_PAGE_COUNT FLASH_SECTOR_TOTAL
 #define FLASH_PAGE_SIZE ((FLASH_SIZE*1024)/FLASH_SECTOR_TOTAL)
 
 #define LED0_GPIO   GPIOE
-#define LED0_PIN    Pin_15 // LED1 PE15
+#define LED0_PIN    Pin_15
 #define LED1_GPIO   GPIOE
-#define LED1_PIN    Pin_12  // LED2 PE12
+#define LED1_PIN    Pin_12
+#define LED2_GPIO   GPIOE
+#define LED2_PIN    Pin_10
+
+#define BEEPER
+#define BEEPER_INVERTED
+#define BEEP_GPIO GPIOE
+#define BEEP_PIN Pin_4 // PA15 (Beeper)
+#define BEEP_PERIPHERAL 0 // FIXME: remove dependency
+
+
+// ADC
+#define VBAT_ADC_GPIO               GPIOC
+#define VBAT_ADC_GPIO_PIN           Pin_3
+#define VBAT_ADC_CHANNEL            ADC_CHANNEL_13
+
+#define CURRENT_METER_ADC_GPIO      GPIOC
+#define CURRENT_METER_ADC_GPIO_PIN  Pin_2
+#define CURRENT_METER_ADC_CHANNEL   ADC_CHANNEL_12
+
+#define RSSI_ADC_GPIO               GPIOC
+#define RSSI_ADC_GPIO_PIN           Pin_4
+#define RSSI_ADC_CHANNEL            ADC_CHANNEL_14
+
+#define EXTERNAL1_ADC_GPIO          GPIOC
+#define EXTERNAL1_ADC_GPIO_PIN      Pin_5
+#define EXTERNAL1_ADC_CHANNEL       ADC_CHANNEL_15
 
 //#define INVERTER_PIN Pin_0 // PC0 used as inverter select GPIO
 //#define INVERTER_GPIO GPIOC
 //#define INVERTER_PERIPHERAL RCC_AHB1Periph_GPIOC
 //#define INVERTER_USART USART1
 
-#define MPU6000_CS_GPIO       GPIOA
-#define MPU6000_CS_PIN        Pin_15
-#define MPU6000_SPI_INSTANCE  SPIDEV_1
+#define MPU6500_CS_GPIO       GPIOA
+#define MPU6500_CS_PIN        Pin_15
+#define MPU6500_SPI_INSTANCE  SPIDEV_1
 
 //#define DEBUG_MPU_DATA_READY_INTERRUPT
 #define USE_MPU_DATA_READY_SIGNAL
@@ -58,18 +81,20 @@
 #define USE_GYRO_SPI_MPU6500
 #define GYRO_MPU6500_ALIGN CW270_DEG
 
-//#define MAG
-////#define USE_MAG_HMC5883
-//#define HMC5883_BUS I2C_DEVICE_INT
-//#define MAG_HMC5883_ALIGN CW90_DEG
+#define MAG
+#define USE_MAG_HMC5883
+#define HMC5883_BUS I2C_DEVICE_INT
+#define MAG_HMC5883_ALIGN CW90_DEG
 
 #define BARO
 #define USE_BARO_BMP280
 #define BMP280_BUS I2C_DEVICE_INT
+#define USE_BARO_MS5611
+#define MS5611_BUS I2C_DEVICE_EXT
 
-//#define PITOT
-//#define USE_PITOT_MS4525
-//#define MS4525_BUS I2C_DEVICE_EXT
+#define PITOT
+#define USE_PITOT_MS4525
+#define MS4525_BUS I2C_DEVICE_EXT
 
 #define I2CGPS_BUS I2C_DEVICE_INT
 
@@ -86,7 +111,7 @@
 
 #define USABLE_TIMER_CHANNEL_COUNT 24
 
-#define USE_VCP
+//#define USE_VCP
 
 #define USE_USART1
 #define USART1_RX_PIN Pin_10
@@ -133,7 +158,7 @@
 #define SPI1_MOSI_GPIO  GPIOB
 #define SPI1_MOSI_PIN   Pin_5
 
-#define USE_SPI_DEVICE_1
+#define USE_SPI_DEVICE_2
 #define SPI2_SCK_GPIO   GPIOB
 #define SPI2_SCK_PIN    Pin_13
 #define SPI2_NSS_GPIO   GPIOB
@@ -143,7 +168,7 @@
 #define SPI2_MOSI_GPIO  GPIOB
 #define SPI2_MOSI_PIN   Pin_15
 
-#define USE_SPI_DEVICE_1
+#define USE_SPI_DEVICE_3
 #define SPI3_SCK_GPIO   GPIOC
 #define SPI3_SCK_PIN    Pin_10
 #define SPI3_NSS_GPIO   GPIOA
@@ -153,7 +178,6 @@
 #define SPI3_MOSI_GPIO  GPIOC
 #define SPI3_MOSI_PIN   Pin_12
 
-//#define USE_SPI_DEVICE_3
 
 #define USE_I2C
 #define I2C_DEVICE_INT (I2CDEV_1)
@@ -177,8 +201,17 @@
 
 #define SENSORS_SET (SENSOR_ACC|SENSOR_MAG|SENSOR_BARO)
 
-//#define LED_STRIP
-//#define LED_STRIP_TIMER TIM5
+#define LED_STRIP
+#define LED_STRIP_GPIO              GPIOA
+#define LED_STRIP_PIN               Pin_6
+#define LED_STRIP_AF                GPIO_AF2_TIM3
+#define LED_STRIP_TIMER             TIM3
+#define LED_STRIP_TIMER_CHANNEL     TIM_CHANNEL_1
+#define LED_STRIP_TIMER_DMA_RQ      TIM_DMA_ID_CC1
+#define LED_STRIP_DMA_STREAM        DMA1_Stream5
+#define LED_STRIP_DMA_CHANNEL       DMA_CHANNEL_5
+#define LED_STRIP_DMA_STREAM_IRQn   DMA1_Stream4_IRQn
+#define LED_STRIP_DMA_IRQHandler    DMA1_Stream4_IRQHandler
 
 #define GPS
 #define GPS_PROTO_NMEA

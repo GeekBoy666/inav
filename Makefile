@@ -235,7 +235,7 @@ INCLUDE_DIRS   := $(INCLUDE_DIRS) \
                   $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/Include \
                   $(ROOT)/src/main/vcpf4
 
-ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
+ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion 
 DEVICE_FLAGS    = -DSTM32F745xx -DUSE_HAL_DRIVER
 ifeq ($(TARGET),MODULOF7)
 DEVICE_FLAGS   += -DHSE_VALUE=8000000
@@ -882,12 +882,21 @@ REVO_SRC = \
 MODULOF7_SRC = \
             drivers/system_stm32f7xx.c \
             drivers/accgyro_mpu.c \
-            drivers/accgyro_spi_mpu6000.c \
+            drivers/accgyro_spi_mpu6500.c \
+            drivers/barometer_ms5611.c \
+            drivers/barometer_bmp280.c \
+            drivers/pitotmeter_ms4525.c \
+            drivers/compass_hmc5883l.c \
+            drivers/display_ug2864hsweg01.c \
+            drivers/adc.c \
+            drivers/adc_stm32f7xx.c \
             drivers/bus_i2c_hal.c \
             drivers/bus_spi_hal.c \
             drivers/gpio_stm32f7xx.c \
             drivers/inverter.c \
             drivers/light_led_hal.c \
+            drivers/light_ws2811strip.c \
+            drivers/light_ws2811strip_hal.c \
             drivers/pwm_mapping.c \
             drivers/pwm_output_hal.c \
             drivers/pwm_rx.c \
@@ -1017,7 +1026,6 @@ ASFLAGS     = $(ARCH_FLAGS) \
               -MMD -MP
 
 LDFLAGS     = -lm \
-              -nostartfiles \
               --specs=nano.specs \
               -lc \
               -lnosys \

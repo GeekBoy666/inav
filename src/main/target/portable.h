@@ -13,6 +13,14 @@
 
 #if defined(STM32F745xx) || defined(STM32F767xx)
 
+//    #define MCU_FLASH_PAGE_COUNT FLASH_SECTOR_TOTAL
+#if defined(STM32F745xx) 
+    #define MCU_FLASH_SECTORS {32, 32, 32, 32, 128, 256, 256, 256} // all sector sizes in kB
+#elif defined(STM32F767xx)
+    #define MCU_FLASH_SECTORS {32, 32, 32, 32, 128, 256, 256, 256} // all sector sizes in kB
+#else
+#error Please select a correct device
+#endif
     #define systemReset NVIC_SystemReset
     /// TODO: F7 is a bootloader needed?
     #define systemResetToBootloader NVIC_SystemReset
@@ -58,6 +66,12 @@
     #define MCU_SPI3_CLK    MCU_APB1_CLK
     #define MCU_SPI3_SPEED  {SPI_BAUDRATEPRESCALER_64, SPI_BAUDRATEPRESCALER_8, SPI_BAUDRATEPRESCALER_4} //0.84Mhz, 6.75Mhz, 13.5Mhz
 
+
+    // ADC
+#define MCU_ADC1_DMA_STREAM         DMA2_Stream0
+#define MCU_ADC1_DMA_CHANNEL        DMA_CHANNEL_0
+#define MCU_ADC1_DMA_STREAM_IRQn    DMA2_Stream0_IRQn
+#define MCU_ADC1_DMA_IRQHandler     DMA2_Stream0_IRQHandler
 
 #endif
 
