@@ -347,6 +347,28 @@ static void pwmGPIOConfig(GPIO_TypeDef *gpio, uint32_t pin, GPIO_Mode mode)
     gpioInit(gpio, &cfg);
 }
 
+#ifdef USE_HAL_DRIVER
+
+void pwmICConfig(TIM_TypeDef *tim, uint8_t channel, uint16_t polarity)
+{
+    TIM_HandleTypeDef* Handle = timerFindTimerHandle(tim);
+    if(Handle == NULL) return;
+    
+    TIM_IC_InitTypeDef TIM_ICInitStructure;
+
+    TIM_ICInitStructure.ICPolarity = polarity;
+    TIM_ICInitStructure.ICSelection = TIM_ICSelection_DirectTI;
+    TIM_ICInitStructure.ICPrescaler = TIM_ICPSC_DIV1;
+
+    if (inputFilteringMode == INPUT_FILTERING_ENABLED) {
+        TIM_ICInitStructure.ICFilter = INPUT_FILTER_TO_HELP_WITH_NOISE_FROM_OPENLRS_TELEMETRY_RX;
+    } else {
+        TIM_ICInitStructure.ICFilter = 0x00;
+    }
+
+    HAL_TIM_IC_ConfigChannel(Handle, &TIM_ICInitStructure, channel);
+}
+#else
 void pwmICConfig(TIM_TypeDef *tim, uint8_t channel, uint16_t polarity)
 {
     TIM_ICInitTypeDef TIM_ICInitStructure;
@@ -365,6 +387,9 @@ void pwmICConfig(TIM_TypeDef *tim, uint8_t channel, uint16_t polarity)
 
     TIM_ICInit(tim, &TIM_ICInitStructure);
 }
+
+#endif
+
 
 void pwmInConfig(const timerHardware_t *timerHardwarePtr, uint8_t channel)
 {
