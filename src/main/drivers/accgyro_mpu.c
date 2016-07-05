@@ -248,7 +248,18 @@ void configureMPUDataReadyInterruptHandling(void)
 #endif
 
     registerExtiCallbackHandler(mpuIntExtiConfig->exti_irqn, MPU_DATA_READY_EXTI_Handler);
-
+#ifdef USE_HAL_DRIVER
+    /// TODO: HAL EXTI implementation
+    
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+    GPIO_InitStructure.Pull = GPIO_NOPULL;
+    GPIO_InitStructure.Pin = mpuIntExtiConfig->gpioPin;
+    HAL_GPIO_Init(mpuIntExtiConfig->gpioPort, &GPIO_InitStructure);
+    
+    HAL_NVIC_SetPriority(mpuIntExtiConfig->exti_irqn, NVIC_PRIORITY_BASE(NVIC_PRIO_MPU_DATA_READY), NVIC_PRIORITY_SUB(NVIC_PRIO_MPU_DATA_READY));
+    HAL_NVIC_EnableIRQ(mpuIntExtiConfig->exti_irqn);
+#else
     EXTI_ClearITPendingBit(mpuIntExtiConfig->exti_line);
 
     EXTI_InitTypeDef EXTIInit;
@@ -257,7 +268,7 @@ void configureMPUDataReadyInterruptHandling(void)
     EXTIInit.EXTI_Trigger = EXTI_Trigger_Rising;
     EXTIInit.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTIInit);
-
+    
     NVIC_InitTypeDef NVIC_InitStructure;
 
     NVIC_InitStructure.NVIC_IRQChannel = mpuIntExtiConfig->exti_irqn;
@@ -265,6 +276,8 @@ void configureMPUDataReadyInterruptHandling(void)
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = NVIC_PRIORITY_SUB(NVIC_PRIO_MPU_DATA_READY);
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
+#endif
+
 #endif
 }
 
