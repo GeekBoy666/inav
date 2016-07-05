@@ -264,6 +264,10 @@ void timerConfigure(const timerHardware_t *timerHardwarePtr, uint16_t period, ui
 // allocate and configure timer channel. Timer priority is set to highest priority of its channels
 void timerChInit(const timerHardware_t *timHw, channelType_t type, int irqPriority)
 {
+    uint8_t timerIndex = lookupTimerIndex(timHw->tim);
+    if (timerIndex >= USED_TIMER_COUNT) {
+        return;
+    }
     unsigned channel = timHw - timerHardware;
     if(channel >= USABLE_TIMER_CHANNEL_COUNT)
         return;
@@ -275,7 +279,8 @@ void timerChInit(const timerHardware_t *timHw, channelType_t type, int irqPriori
     if(irqPriority < timerInfo[timer].priority) {
         // it would be better to set priority in the end, but current startup sequence is not ready
         configTimeBase(usedTimers[timer], 0, 1);
-        TIM_Cmd(usedTimers[timer],  ENABLE);
+        HAL_TIM_Base_Start(&timeHandle[timerIndex].Handle);
+
 
         HAL_NVIC_SetPriority(timHw->irq, NVIC_PRIORITY_BASE(irqPriority), NVIC_PRIORITY_SUB(irqPriority));
         HAL_NVIC_EnableIRQ(timHw->irq);
