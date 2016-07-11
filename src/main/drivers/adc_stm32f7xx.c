@@ -48,7 +48,7 @@ void adcInit(drv_adc_config_t *init)
     memset(&adcConfig, 0, sizeof(adcConfig));
 
     GPIO_InitTypeDef GPIO_InitStruct;
-    GPIO_InitStruct.Alternate = 0;
+    GPIO_InitStruct.Alternate = 0xFF;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;

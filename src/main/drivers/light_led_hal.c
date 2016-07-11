@@ -29,40 +29,33 @@
 
 void ledInit(void)
 {
-    uint32_t i;
-
-    struct {
-        GPIO_TypeDef *gpio;
-        gpio_config_t cfg;
-    } gpio_setup[] = {
+    GPIO_InitTypeDef ioinit;
+    ioinit.Alternate = 0xFF;
+    ioinit.Mode = GPIO_MODE_OUTPUT_PP;
+    ioinit.Speed = GPIO_SPEED_LOW;
+    ioinit.Pull = GPIO_NOPULL;
+    
 #ifdef LED0
-        {
-            .gpio = LED0_GPIO,
-            .cfg = { LED0_PIN, Mode_Out_PP, Speed_2MHz }
-        },
+    ioinit.Pin = LED0_PIN;
+    HAL_GPIO_Init(LED0_GPIO, &ioinit);
 #endif
 #ifdef LED1
-        {
-            .gpio = LED1_GPIO,
-            .cfg = { LED1_PIN, Mode_Out_PP, Speed_2MHz }
-        },
+    ioinit.Pin = LED1_PIN;
+    HAL_GPIO_Init(LED1_GPIO, &ioinit);
 #endif
 #ifdef LED2
-        {
-        	.gpio = LED2_GPIO,
-        	.cfg = { LED2_PIN, Mode_Out_PP, Speed_2MHz }
-        }
+    ioinit.Pin = LED2_PIN;
+    HAL_GPIO_Init(LED2_GPIO, &ioinit);
 #endif
-    };
 
-    uint8_t gpio_count = ARRAYLEN(gpio_setup);
+    LED0_ON;
+    LED1_ON;
+    LED2_ON;
 
     LED0_OFF;
     LED1_OFF;
     LED2_OFF;
 
-    for (i = 0; i < gpio_count; i++) {
-        gpioInit(gpio_setup[i].gpio, &gpio_setup[i].cfg);
-    }
+
 }
 
