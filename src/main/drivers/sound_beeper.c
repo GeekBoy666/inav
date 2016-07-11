@@ -57,7 +57,8 @@ void systemBeep(bool onoff)
 #ifndef BEEPER
     UNUSED(onoff);
 #else
-    systemBeepPtr(onoff);
+    if(systemBeepPtr != NULL)
+        systemBeepPtr(onoff);
 #endif
 }
 
