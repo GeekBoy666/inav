@@ -32,9 +32,9 @@
 #define MAX_SERVOS  8
 
 #else
-#define MAX_PWM_MOTORS  12
+#define MAX_PWM_MOTORS  16
 #define MAX_PWM_SERVOS  8
-#define MAX_MOTORS  12
+#define MAX_MOTORS  16
 #define MAX_SERVOS  8
 #endif
 
