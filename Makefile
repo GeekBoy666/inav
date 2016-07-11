@@ -16,7 +16,7 @@
 #
 
 # The target to build, see VALID_TARGETS below
-TARGET    ?= MODULOF7
+TARGET    ?= NUCLEOF7
 
 # Compile-time options
 OPTIONS   ?=
@@ -25,7 +25,7 @@ OPTIONS   ?=
 OPBL      ?= no
 
 # Debugger optons, must be empty or GDB
-DEBUG     ?=
+DEBUG     ?= GDB
 
 # Insert the debugging hardfault debugger
 # releases should not be built with this flag as it does not disable pwm output
@@ -70,7 +70,7 @@ VALID_TARGETS  := $(sort $(VALID_TARGETS))
 
 F3_TARGETS = ALIENWIIF3 CHEBUZZF3 COLIBRI_RACE LUX_RACE MOTOLAB NAZE32PRO RMDO SPARKY SPRACINGF3 STM32F3DISCOVERY
 F4_TARGETS = ANYFC REVO COLIBRI
-F7_TARGETS = MODULOF7
+F7_TARGETS = MODULOF7 NUCLEOF7
 
 VALID_TARGETS = $(64K_TARGETS) $(128K_TARGETS) $(256K_TARGETS) $(F4_TARGETS) $(F7_TARGETS)
 
@@ -104,6 +104,8 @@ else ifeq ($(TARGET),$(filter $(TARGET),ANYFC REVO COLIBRI))
 FLASH_SIZE = 256
 else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7))
 FLASH_SIZE = 1024
+else ifeq ($(TARGET),$(filter $(TARGET),NUCLEOF7))
+FLASH_SIZE = 2048
 else
 $(error FLASH_SIZE not configured for target $(TARGET))
 endif
@@ -223,7 +225,7 @@ VPATH := $(VPATH):$(USBOTG_DIR)/src:$(USBCORE_DIR)/src:$(USBCDC_DIR)/src
 DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
                         $(USBOTG_SRC) \
                         $(USBCORE_SRC) \
-                        $(USBCDC_SRC) 
+                        $(USBCDC_SRC)
 
 VPATH     := $(VPATH):$(CMSIS_DIR)/CM1/CoreSupport:$(CMSIS_DIR)/CM1/DeviceSupport/ST/STM32F4xx
 CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM1/CoreSupport/*.c \
@@ -235,7 +237,7 @@ INCLUDE_DIRS   := $(INCLUDE_DIRS) \
                   $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/Include \
                   $(ROOT)/src/main/vcpf4
 
-ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion 
+ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
 DEVICE_FLAGS    = -DSTM32F745xx -DUSE_HAL_DRIVER
 ifeq ($(TARGET),MODULOF7)
 DEVICE_FLAGS   += -DHSE_VALUE=8000000
@@ -244,36 +246,30 @@ LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
 endif
 TARGET_FLAGS   = -D$(TARGET)
 
-# F7
-else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7))
+# F7 targets
+else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7 NUCLEOF7))
 
 STDPERIPH_DIR  = $(ROOT)/lib/main/STM32F7xx_HAL_Driver
 STDPERIPH_SRC  = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*.c))
-EXCLUDES       = stm32f7xx_hal_timebase_rtc_alarm_template.c \
-                 stm32f7xx_hal_timebase_rtc_wakeup_template.c
+EXCLUDES       = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*_template.c))
 
 STDPERIPH_SRC := $(filter-out ${EXCLUDES}, $(STDPERIPH_SRC))
 
-#USBCORE_DIR = $(ROOT)/lib/main/STM32_USB_Device_Library/Core
-#USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/src/*.c))
+USBCORE_DIR = $(ROOT)/Middlewares/ST/STM32_USB_Device_Library/Core
+USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/Src/*.c))
+EXCLUDES    = usbd_conf_template.c
+USBCORE_SRC := $(filter-out ${EXCLUDES}, $(USBCORE_SRC))
 
-#USBOTG_DIR = $(ROOT)/lib/main/STM32_USB_OTG_Driver
-#USBOTG_SRC = $(notdir $(wildcard $(USBOTG_DIR)/src/*.c))
-#EXCLUDES   = usb_bsp_template.c \
-#             usb_hcd_int.c \
-#             usb_hcd.c \
-#             usb_otg.c
+USBCDC_DIR = $(ROOT)/Middlewares/ST/STM32_USB_Device_Library/Class/CDC
+USBCDC_SRC = $(notdir $(wildcard $(USBCDC_DIR)/Src/*.c))
+EXCLUDES   = usbd_cdc_if_template.c
+USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
 
-#USBOTG_SRC := $(filter-out ${EXCLUDES}, $(USBOTG_SRC))
+VPATH := $(VPATH):$(USBCDC_DIR)/Src:$(USBCORE_DIR)/Src
 
-#USBCDC_DIR  = $(ROOT)/lib/main/STM32_USB_Device_Library/Class/cdc
-#USBCDC_SRC  = $(notdir $(wildcard $(USBCDC_DIR)/src/*.c))
-#EXCLUDES    = usbd_cdc_if_template.c
-#USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
-
-VPATH := $(VPATH):$(USBOTG_DIR)/src:$(USBCORE_DIR)/src:$(USBCDC_DIR)/src
-
-DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC)
+DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
+                        $(USBCORE_SRC) \
+                        $(USBCDC_SRC)
 
 VPATH     := $(VPATH):$(CMSIS_DIR)/CM7/CoreSupport:$(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx
 CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM7/CoreSupport/*.c \
@@ -281,28 +277,23 @@ CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM7/CoreSupport/*.c \
 
 INCLUDE_DIRS   := $(INCLUDE_DIRS) \
                   $(STDPERIPH_DIR)/inc \
-                  $(USBOTG_DIR)/inc \
-                  $(USBCORE_DIR)/inc \
-                  $(USBCDC_DIR)/inc \
-                  $(CMSIS_DIR)/CM1/CoreSupport \
-                  $(CMSIS_DIR)/CM1/DeviceSupport/ST/STM32F4xx \
-                  $(ROOT)/src/main/vcpf4
+                  $(CMSIS_DIR)/CM7/CoreSupport \
+                  $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/Include \
+                  $(USBCORE_DIR)/Inc \
+                  $(USBCDC_DIR)/Inc \
+                  $(ROOT)/src/main/vcp_hal
 
-ARCH_FLAGS      = -mthumb -mcpu=cortex-m4 -march=armv7e-m -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fsingle-precision-constant -Wdouble-promotion
-DEVICE_FLAGS    = -DSTM32F40_41xxx
-ifeq ($(TARGET),ANYFC)
-DEVICE_FLAGS   += -DHSE_VALUE=8000000
-LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405.ld
+
+ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
+DEVICE_FLAGS    = -DUSE_HAL_DRIVER
+ifeq ($(TARGET),MODULOF7)
+DEVICE_FLAGS   += -DHSE_VALUE=8000000 -DSTM32F745xx
+LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
 .DEFAULT_GOAL  := binary
 endif
-ifeq ($(TARGET),REVO)
-DEVICE_FLAGS   += -DHSE_VALUE=8000000
-LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405_bl.ld
-.DEFAULT_GOAL  := binary
-endif
-ifeq ($(TARGET),COLIBRI)
-DEVICE_FLAGS   += -DHSE_VALUE=16000000
-LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f405_bl.ld
+ifeq ($(TARGET),NUCLEOF7)
+DEVICE_FLAGS   += -DHSE_VALUE=8000000 -DSTM32F767xx
+LD_SCRIPT       = $(LINKER_DIR)/STM32F767ZITx_FLASH.ld
 .DEFAULT_GOAL  := binary
 endif
 TARGET_FLAGS   = -D$(TARGET)
@@ -558,7 +549,7 @@ COMMON_SRC = \
             sensors/initialisation.c \
             $(CMSIS_SRC) \
             $(DEVICE_STDPERIPH_SRC)
-            
+
 HIGHEND_SRC = \
             blackbox/blackbox.c \
             blackbox/blackbox_io.c \
@@ -878,8 +869,14 @@ REVO_SRC = \
             $(HIGHEND_SRC) \
             $(COMMON_SRC) \
             $(VCPF4_SRC)
-            
-MODULOF7_SRC = \
+
+VCPHAL_SRC = \
+            vcp_hal/usbd_desc.c \
+            vcp_hal/usbd_conf.c \
+            vcp_hal/usbd_cdc_interface.c \
+            drivers/serial_usb_vcp_hal.c
+
+F7COMMON_SRC =  \
             drivers/system_stm32f7xx.c \
             drivers/accgyro_mpu.c \
             drivers/accgyro_spi_mpu6500.c \
@@ -908,8 +905,14 @@ MODULOF7_SRC = \
             io/flashfs.c \
             $(HIGHEND_SRC) \
             $(COMMON_SRC) \
-            startup_stm32f745xx.s 
-            
+            $(VCPHAL_SRC)
+
+MODULOF7_SRC = $(F7COMMON_SRC) \
+            startup_stm32f745xx.s
+
+NUCLEOF7_SRC = $(F7COMMON_SRC) \
+            startup_stm32f767xx.s
+
 #            $(VCPF4_SRC)
 
 STM32F30x_COMMON_SRC = \
