@@ -73,17 +73,18 @@ static void pwmOCConfig(TIM_TypeDef *tim, uint32_t channel, uint16_t value)
     TIM_OCInitStructure.OCFastMode = TIM_OCFAST_DISABLE;
     
     HAL_TIM_PWM_ConfigChannel(Handle, &TIM_OCInitStructure, channel);
-    HAL_TIM_PWM_Start(Handle, channel);
 }
 
-static void pwmGPIOConfig(GPIO_TypeDef *gpio, uint32_t pin, GPIO_Mode mode)
+static void pwmGPIOConfig(const timerHardware_t *timerHardwar)
 {
-    gpio_config_t cfg;
-
-    cfg.pin = pin;
-    cfg.mode = mode;
-    cfg.speed = Speed_2MHz;
-    gpioInit(gpio, &cfg);
+    GPIO_InitTypeDef init;
+    init.Speed = GPIO_SPEED_LOW;
+    init.Alternate = timerHardwar->alternateFunction;
+    init.Pin = timerHardwar->pin;
+    init.Pull = GPIO_PULLDOWN;
+    init.Mode = timerHardwar->gpioInputMode;
+    
+    HAL_GPIO_Init(timerHardwar->gpio, &init);
 }
 
 static pwmOutputPort_t *pwmOutConfig(const timerHardware_t *timerHardware, uint8_t mhz, uint16_t period, uint16_t value)
@@ -93,11 +94,13 @@ static pwmOutputPort_t *pwmOutConfig(const timerHardware_t *timerHardware, uint8
     if(Handle == NULL) return p;
 
     configTimeBase(timerHardware->tim, period, mhz);
-    pwmGPIOConfig(timerHardware->gpio, timerHardware->pin, Mode_AF_PP);
+    pwmGPIOConfig(timerHardware);
 
 
     pwmOCConfig(timerHardware->tim, timerHardware->channel, value);
     if (timerHardware->outputEnable)
+        HAL_TIM_PWM_Start(Handle, timerHardware->channel);
+    else        
         HAL_TIM_PWM_Stop(Handle, timerHardware->channel);
     HAL_TIM_Base_Start(Handle);
 

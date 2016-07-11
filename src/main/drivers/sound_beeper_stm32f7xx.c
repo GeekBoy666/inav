@@ -31,7 +31,8 @@ void initBeeperHardware(beeperConfig_t *config)
     gpio_config_t gpioConfig = {
         config->gpioPin,
         config->gpioMode,
-        Speed_2MHz
+        Speed_2MHz,
+        0xff
     };
 
     gpioInit(config->gpioPort, &gpioConfig);
