@@ -189,7 +189,7 @@ const extiConfig_t *selectMPUIntExtiConfig(void)
     return &revoMPUIntExtiConfig;
 #endif
 
-#if defined(MODULOF7)
+#if defined(MODULOF7) || defined(NUCLEOF7)
     /// Fixme: HAL implent HAL drivers for EXTI
 //    static const extiConfig_t moduloMPUIntExtiConfig = {
 //            .gpioAHB1Peripherals = RCC_AHB1Periph_GPIOC,

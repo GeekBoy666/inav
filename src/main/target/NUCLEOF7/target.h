@@ -121,7 +121,7 @@
 
 #define USE_VCP
 
-//#define USE_USART1
+#define USE_USART1
 #define USART1_RX_PIN Pin_10
 #define USART1_TX_PIN Pin_9
 #define USART1_GPIO GPIOA
@@ -147,7 +147,7 @@
 #define USART4_TX_PIN Pin_6
 #define USART4_GPIO GPIOC
 #define USE_USART4_RX_DMA false
-#define USE_USART4_TX_DMA true
+#define USE_USART4_TX_DMA false // TX dma conflicts with ledstrip dma
 
 #define USE_USART6
 #define USART6_RX_PIN Pin_7

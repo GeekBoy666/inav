@@ -396,7 +396,7 @@ void init(void)
     }
 #else
     i2cInit(I2C_DEVICE_INT);
-#if defined(ANYFC) || defined(COLIBRI) || defined(REVO) || defined(MODULOF7)
+#if defined(ANYFC) || defined(COLIBRI) || defined(REVO) || defined(MODULOF7) || defined(NUCLEOF7)
     if (!doesConfigurationUsePort(SERIAL_PORT_USART3)) {
 #ifdef I2C_DEVICE_EXT
         i2cInit(I2C_DEVICE_EXT);

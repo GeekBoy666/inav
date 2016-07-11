@@ -13,11 +13,12 @@
 
 #if defined(STM32F745xx) || defined(STM32F767xx)
 
-//    #define MCU_FLASH_PAGE_COUNT FLASH_SECTOR_TOTAL
 #if defined(STM32F745xx) 
+    #define MCU_FLASH_NR_SECTORS 8
     #define MCU_FLASH_SECTORS {32, 32, 32, 32, 128, 256, 256, 256} // all sector sizes in kB
 #elif defined(STM32F767xx)
-    #define MCU_FLASH_SECTORS {32, 32, 32, 32, 128, 256, 256, 256} // all sector sizes in kB
+    #define MCU_FLASH_NR_SECTORS 12
+    #define MCU_FLASH_SECTORS {32, 32, 32, 32, 128, 256, 256, 256, 256, 256, 256, 256} // all sector sizes in kB
 #else
 #error Please select a correct device
 #endif
@@ -29,7 +30,7 @@
     #define MCU_APB1_CLK    (MCU_SYS_CLK/4)
     #define MCU_APB2_CLK    (MCU_SYS_CLK/2)
     
-    // Configure UART 1
+  // Configure UART 1
     #define MCU_UART1_AF                    GPIO_AF7_USART1
     #define MCU_UART1_DMA_TX_STREAM         DMA2_Stream7
     #define MCU_UART1_DMA_TX_CHANNEL        DMA_CHANNEL_4
@@ -39,13 +40,54 @@
     #define MCU_UART1_DMA_RX_CHANNEL        DMA_CHANNEL_4
     #define MCU_UART1_DMA_RX_STREAM_IRQn    DMA2_Stream5_IRQn
     #define MCU_UART1_DMA_RX_IRQHandler     DMA2_Stream5_IRQHandler
+
+  // Configure UART 2
+    #define MCU_UART2_AF                    GPIO_AF7_USART2
+    #define MCU_UART2_DMA_TX_STREAM         DMA1_Stream6
+    #define MCU_UART2_DMA_TX_CHANNEL        DMA_CHANNEL_4
+    #define MCU_UART2_DMA_TX_STREAM_IRQn    DMA1_Stream6_IRQn
+    #define MCU_UART2_DMA_TX_IRQHandler     DMA1_Stream6_IRQHandler
+    #define MCU_UART2_DMA_RX_STREAM         DMA1_Stream5
+    #define MCU_UART2_DMA_RX_CHANNEL        DMA_CHANNEL_4
+    #define MCU_UART2_DMA_RX_STREAM_IRQn    DMA1_Stream5_IRQn
+    #define MCU_UART2_DMA_RX_IRQHandler     DMA1_Stream5_IRQHandler
+
+  // Configure UART 3
+    #define MCU_UART3_AF                    GPIO_AF7_USART3
+    #define MCU_UART3_DMA_TX_STREAM         DMA1_Stream3
+    #define MCU_UART3_DMA_TX_CHANNEL        DMA_CHANNEL_4
+    #define MCU_UART3_DMA_TX_STREAM_IRQn    DMA1_Stream3_IRQn
+    #define MCU_UART3_DMA_TX_IRQHandler     DMA1_Stream3_IRQHandler
+    #define MCU_UART3_DMA_RX_STREAM         DMA1_Stream1
+    #define MCU_UART3_DMA_RX_CHANNEL        DMA_CHANNEL_4
+    #define MCU_UART3_DMA_RX_STREAM_IRQn    DMA1_Stream1_IRQn
+    #define MCU_UART3_DMA_RX_IRQHandler     DMA1_Stream1_IRQHandler
+  
+  // Configure UART 4
+    #define MCU_UART4_AF                    GPIO_AF8_UART4
+    #define MCU_UART4_DMA_TX_STREAM         DMA1_Stream4
+    #define MCU_UART4_DMA_TX_CHANNEL        DMA_CHANNEL_4
+    #define MCU_UART4_DMA_TX_STREAM_IRQn    DMA1_Stream4_IRQn
+    #define MCU_UART4_DMA_TX_IRQHandler     DMA1_Stream4_IRQHandler
+    #define MCU_UART4_DMA_RX_STREAM         DMA1_Stream2
+    #define MCU_UART4_DMA_RX_CHANNEL        DMA_CHANNEL_4
+    #define MCU_UART4_DMA_RX_STREAM_IRQn    DMA1_Stream2_IRQn
+    #define MCU_UART4_DMA_RX_IRQHandler     DMA1_Stream2_IRQHandler
     
     /// TODO: HAL Implement definitions for other uarts
-    #define MCU_UART2_AF    GPIO_AF7_USART2
-    #define MCU_UART3_AF    GPIO_AF7_USART3
-    #define MCU_UART4_AF    GPIO_AF8_UART4
     #define MCU_UART5_AF    GPIO_AF8_USART5
-    #define MCU_UART6_AF    GPIO_AF8_USART6
+
+
+  // Configure UART 6
+    #define MCU_UART6_AF                    GPIO_AF8_USART6
+    #define MCU_UART6_DMA_TX_STREAM         DMA2_Stream6
+    #define MCU_UART6_DMA_TX_CHANNEL        DMA_CHANNEL_5
+    #define MCU_UART6_DMA_TX_STREAM_IRQn    DMA2_Stream6_IRQn
+    #define MCU_UART6_DMA_TX_IRQHandler     DMA2_Stream6_IRQHandler
+    #define MCU_UART6_DMA_RX_STREAM         DMA2_Stream1
+    #define MCU_UART6_DMA_RX_CHANNEL        DMA_CHANNEL_5
+    #define MCU_UART6_DMA_RX_STREAM_IRQn    DMA2_Stream1_IRQn
+    #define MCU_UART6_DMA_RX_IRQHandler     DMA2_Stream1_IRQHandler
     
     // Config I2C
     #define MCU_I2C1_AF     GPIO_AF4_I2C1
