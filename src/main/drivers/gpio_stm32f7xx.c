@@ -46,7 +46,7 @@ void gpioInit(GPIO_TypeDef *gpio, const gpio_config_t *config)
         if (config->pin & pinMask) {
 
             GPIO_InitStructure.Pin =  pinMask;
-            GPIO_InitStructure.Mode = (config->mode >> MODE_OFFSET) & MODE_MASK;
+            GPIO_InitStructure.Mode = config->mode;
 
             uint32_t speed = GPIO_SPEED_FREQ_MEDIUM;
             switch (config->speed) {
@@ -63,7 +63,17 @@ void gpioInit(GPIO_TypeDef *gpio, const gpio_config_t *config)
 
             GPIO_InitStructure.Speed = speed;
 //            GPIO_InitStructure.GPIO_OType = (config->mode >> OUTPUT_OFFSET) & OUTPUT_MASK;
-            GPIO_InitStructure.Pull = (config->mode >> PUPD_OFFSET) & PUPD_MASK;
+            GPIO_InitStructure.Pull = GPIO_NOPULL;
+            if((config->mode == Mode_AF_PP_PU) || config->mode == Mode_IPU)
+            {
+                GPIO_InitStructure.Pull = GPIO_PULLUP;
+            } 
+            else if((config->mode == Mode_AF_PP_PD) || config->mode == Mode_IPD)
+            {
+                GPIO_InitStructure.Pull = GPIO_PULLDOWN;
+            }
+            
+            GPIO_InitStructure.Alternate = config->AltFunction;
             HAL_GPIO_Init(gpio, &GPIO_InitStructure);
         }
     }
