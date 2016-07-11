@@ -78,11 +78,11 @@ static void handleUartTxDma(uartPort_t *s);
         MCU_UART##X##_DMA_##DIR##_STREAM_IRQn \
     }
 
-#define UART_X_CONFIG(X) \
+#define UART_X_CONFIG(X, PORT) \
     {\
         &uartPort##X,\
-        USART##X,\
-        USART##X##_IRQn,\
+        PORT,\
+        PORT##_IRQn,\
         UART_X_TXRX_CONFIG(X,TX),\
         UART_X_TXRX_CONFIG(X,RX)\
     }
@@ -110,76 +110,88 @@ void MCU_UART##X##_DMA_RX_IRQHandler(void)\
 
 #ifdef USE_USART1    
     UARTxSETUP(1)
-    #define UART1CONFIG UART_X_CONFIG(1)
+    #define UART1CONFIG UART_X_CONFIG(1, USART1)
 #endif
     
 #ifdef USE_USART2    
     UARTxSETUP(2)
-    #define UART2CONFIG UART_X_CONFIG(2)
+    #define UART2CONFIG UART_X_CONFIG(2, USART2)
 #endif
     
 #ifdef USE_USART3    
     UARTxSETUP(3)
-    #define UART3CONFIG UART_X_CONFIG(3)
+    #define UART3CONFIG UART_X_CONFIG(3, USART3)
 #endif
     
 #ifdef USE_USART4    
     UARTxSETUP(4)
-    #define UART4CONFIG UART_X_CONFIG(4)
+    #define UART4CONFIG UART_X_CONFIG(4, UART4)
 #endif
     
 #ifdef USE_USART5    
     UARTxSETUP(5)
-    #define UART5CONFIG UART_X_CONFIG(5)
+    #define UART5CONFIG UART_X_CONFIG(5, USART5)
 #endif
     
 #ifdef USE_USART6    
     UARTxSETUP(6)
-    #define UART6CONFIG UART_X_CONFIG(6)
+    #define UART6CONFIG UART_X_CONFIG(6, USART6)
 #endif
     
 #ifdef USE_USART7
     UARTxSETUP(7)
-    #define UART7CONFIG UART_X_CONFIG(7)
+    #define UART7CONFIG UART_X_CONFIG(7, USART7)
 #endif
     
 #ifdef USE_USART8
     UARTxSETUP(8)
-    #define UART8CONFIG UART_X_CONFIG(8)
+    #define UART8CONFIG UART_X_CONFIG(8, USART8)
 #endif
     
 uartConfig_t uartFindConfig(USART_TypeDef *USARTx)
 {
     if (USARTx == USART1) {
+#ifdef USE_USART1
         uartConfig_t cfg = UART1CONFIG;
         return cfg;
+#else
+        uartConfig_t cfg = {0};
+        return cfg;
+#endif
 #ifdef USE_USART2
     } else if (USARTx == USART2) {
-        return UART2CONFIG;
+        uartConfig_t cfg = UART2CONFIG;
+        return cfg;
 #endif
 #ifdef USE_USART3
     } else if (USARTx == USART3) {
-        return UART3CONFIG;
+        uartConfig_t cfg = UART3CONFIG;
+        return cfg;
 #endif
 #ifdef USE_USART4
     } else if (USARTx == UART4) {
-        return UART4CONFIG;
+        uartConfig_t cfg = UART4CONFIG;
+        return cfg;
 #endif
 #ifdef USE_USART5
     } else if (USARTx == UART5) {
-        return UART5CONFIG;
+        uartConfig_t cfg = UART5CONFIG;
+        return cfg;
 #endif
 #ifdef USE_USART6
     } else if (USARTx == USART6) {
-        return UART6CONFIG;
+        uartConfig_t cfg = UART6CONFIG;
+        return cfg;
 #endif
 #ifdef USE_USART7
     } else if (USARTx == USART7) {
-        return UART7CONFIG;
+        uartConfig_t cfg = UART7CONFIG;
+        return cfg;
 #endif
 #ifdef USE_USART8
     } else if (USARTx == USART8) {
-        return UART8CONFIG;
+        uartConfig_t cfg = UART8CONFIG;
+        return cfg;
 #endif
     } else {
         uartConfig_t cfg = {0};
@@ -237,16 +249,6 @@ static void uartOpenPortX(uartConfig_t cfg, uartPort_t* s, uint32_t baudRate, po
         }
     }
     
-    // DMA TX Interrupt
-    HAL_NVIC_SetPriority(cfg.tx.dmaIrq, NVIC_PRIORITY_BASE(cfg.tx.nvicPrioDMA), NVIC_PRIORITY_SUB(cfg.tx.nvicPrioDMA));
-    HAL_NVIC_EnableIRQ(cfg.tx.dmaIrq);
-
-    if(!cfg.rx.useDMA)
-    {
-        HAL_NVIC_SetPriority(cfg.InstanceIRQn, NVIC_PRIORITY_BASE(cfg.rx.nvicPrioDMA), NVIC_PRIORITY_SUB(cfg.rx.nvicPrioDMA));
-        HAL_NVIC_EnableIRQ(cfg.InstanceIRQn);
-    }
-
     return;
 }
 
@@ -281,6 +283,13 @@ static void usartConfigurePinInversion(uartPort_t *uartPort) {
 
 static void uartReconfigure(uartPort_t *uartPort)
 {
+    RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
+  RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1;
+  RCC_PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_SYSCLK;
+  HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
+  
+  __HAL_RCC_USART1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
     HAL_UART_DeInit(&uartPort->Handle);
     uartPort->Handle.Init.BaudRate = uartPort->port.baudRate;
     uartPort->Handle.Init.WordLength = UART_WORDLENGTH_8B;
@@ -297,6 +306,7 @@ static void uartReconfigure(uartPort_t *uartPort)
 
     usartConfigurePinInversion(uartPort);
 
+    HAL_UART_IRQHandler(&uartPort->Handle);
     if(uartPort->port.options & SERIAL_BIDIR)
         HAL_HalfDuplex_Init(&uartPort->Handle);
     else
@@ -357,8 +367,8 @@ serialPort_t *uartOpen(USART_TypeDef *USARTx, serialReceiveCallbackPtr callback,
         } 
         else 
         {
-            __HAL_UART_CLEAR_IT(&cfg.uartport->Handle, UART_FLAG_RXNE);
-            __HAL_UART_ENABLE_IT(&cfg.uartport->Handle, UART_IT_RXNE);
+//            __HAL_UART_CLEAR_IT(&cfg.uartport->Handle, UART_FLAG_RXNE);
+//            __HAL_UART_ENABLE_IT(&cfg.uartport->Handle, UART_IT_RXNE);
             HAL_UART_Receive_IT(&cfg.uartport->Handle, (uint8_t *)cfg.rx.buff, cfg.rx.BuffSize); 
         }
     }
@@ -383,15 +393,29 @@ serialPort_t *uartOpen(USART_TypeDef *USARTx, serialReceiveCallbackPtr callback,
             
             
             HAL_DMA_DeInit(cfg.tx.hdma);
-            HAL_DMA_Init(cfg.tx.hdma);
+            HAL_StatusTypeDef status = HAL_DMA_Init(cfg.tx.hdma);
+            if(status != HAL_OK)
+            {
+                while(1);
+            }
             /* Associate the initialized DMA handle to the UART handle */
             __HAL_LINKDMA(&cfg.uartport->Handle, hdmatx, *cfg.tx.hdma);
             
-            __HAL_DMA_ENABLE_IT(cfg.tx.hdma, DMA_IT_TC|DMA_IT_FE|DMA_IT_TE|DMA_IT_DME);
+//            __HAL_DMA_ENABLE_IT(cfg.tx.hdma, DMA_IT_TC|DMA_IT_FE|DMA_IT_TE|DMA_IT_DME);
             __HAL_DMA_SET_COUNTER(cfg.tx.hdma, 0);
         } else {
             __HAL_UART_ENABLE_IT(&cfg.uartport->Handle, UART_IT_TXE);
         }
+    }
+    
+    // DMA TX Interrupt
+    HAL_NVIC_SetPriority(cfg.tx.dmaIrq, NVIC_PRIORITY_BASE(cfg.tx.nvicPrioDMA), NVIC_PRIORITY_SUB(cfg.tx.nvicPrioDMA));
+    HAL_NVIC_EnableIRQ(cfg.tx.dmaIrq);
+
+    if(!cfg.rx.useDMA)
+    {
+        HAL_NVIC_SetPriority(cfg.InstanceIRQn, NVIC_PRIORITY_BASE(cfg.rx.nvicPrioDMA), NVIC_PRIORITY_SUB(cfg.rx.nvicPrioDMA));
+        HAL_NVIC_EnableIRQ(cfg.InstanceIRQn);
     }
 
     return (serialPort_t *)s;
@@ -413,18 +437,23 @@ void uartSetMode(serialPort_t *instance, portMode_t mode)
 
 void uartStartTxDMA(uartPort_t *s)
 {
+    HAL_UART_StateTypeDef state = HAL_UART_GetState(&s->Handle);
+    if((state & HAL_UART_STATE_BUSY_TX) == HAL_UART_STATE_BUSY_TX)
+        return;
+    
     uint16_t size = 0;
-    HAL_UART_DMAStop(&s->Handle);
+//    HAL_UART_DMAStop(&s->Handle);
    
     if (s->port.txBufferHead > s->port.txBufferTail) {
         size = s->port.txBufferHead - s->port.txBufferTail;
+        HAL_UART_Transmit_DMA(&s->Handle, (uint8_t *)&s->port.txBuffer[s->port.txBufferTail], size);
         s->port.txBufferTail = s->port.txBufferHead;
     } else {
         size = s->port.txBufferSize - s->port.txBufferTail;
+        HAL_UART_Transmit_DMA(&s->Handle, (uint8_t *)&s->port.txBuffer[s->port.txBufferTail], size);
         s->port.txBufferTail = 0;
     }
     s->txDMAEmpty = false;
-    HAL_UART_Transmit_DMA(&s->Handle, (uint8_t *)&s->port.txBuffer[s->port.txBufferTail], size);
 
 }
 
@@ -554,7 +583,6 @@ const struct serialPortVTable uartVTable[] = {
 void uartIrqHandler(uartPort_t *s)
 {
     /// TODO: This implmentation is kind of a hack to reduce overhead otherwise generated by the HAL, there might be a better solution
-    
     if (!s->rxDMAStream && (s->Handle.RxXferSize != s->Handle.RxXferCount)) {
         if (s->port.callback) {
             // The HAL has already stored the last received byte in the receive buffer we have tell it where to put the next
@@ -568,6 +596,19 @@ void uartIrqHandler(uartPort_t *s)
         
         // We override the rx transfer counter to keep it going without disabling interrupts
         s->Handle.RxXferCount = s->Handle.RxXferSize;
+        
+        uint32_t errorcode = HAL_UART_GetError(&s->Handle);
+        if(errorcode != HAL_UART_ERROR_NONE)
+        {
+            if(!s->rxDMAStream)
+            {
+                HAL_UART_Receive_IT(&s->Handle, (uint8_t *)s->port.rxBuffer, s->port.rxBufferSize); 
+            }
+            else
+            {
+                HAL_UART_Receive_DMA(&s->Handle, (uint8_t *)s->port.rxBuffer, s->port.rxBufferSize);
+            }
+        }
     }
 
     if (!s->txDMAStream && (s->Handle.TxXferCount == 0)) {
@@ -577,6 +618,10 @@ void uartIrqHandler(uartPort_t *s)
             s->port.txBufferTail = (s->port.txBufferTail + 1) % s->port.txBufferSize;
         }
     }
+    else if(s->txDMAStream && (s->Handle.TxXferCount == 0) && (s->Handle.TxXferSize != 0))
+    {
+        handleUartTxDma(s);
+    }
 }
 
 static void handleUartTxDma(uartPort_t *s)
@@ -584,5 +629,9 @@ static void handleUartTxDma(uartPort_t *s)
     if (s->port.txBufferHead != s->port.txBufferTail)
         uartStartTxDMA(s);
     else
+    {
         s->txDMAEmpty = true;
+        s->Handle.TxXferSize = 0;
+    }
+    
 }
