@@ -196,18 +196,24 @@ void systemInit(void)
         __HAL_RCC_DMA1_CLK_ENABLE();
     #endif
     #ifdef DMA2
-        __HAL_RCC_DMA2D_CLK_ENABLE();
+        __HAL_RCC_DMA2_CLK_ENABLE();
     #endif
     
+    /* Select SysClk as source of USART1 clocks */
+    RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
+    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1;
+    RCC_PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_SYSCLK;
+    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
+        
     // Init clocks of used peripherals        
     #ifdef USE_USART1
     __HAL_RCC_USART1_CLK_ENABLE();
     #endif
     #ifdef USE_USART2
-    __HAL_RCC_UART2_CLK_ENABLE();
+    __HAL_RCC_USART2_CLK_ENABLE();
     #endif
     #ifdef USE_USART3
-    __HAL_RCC_UART3_CLK_ENABLE();
+    __HAL_RCC_USART3_CLK_ENABLE();
     #endif
     #ifdef USE_USART4
     __HAL_RCC_UART4_CLK_ENABLE();
@@ -216,7 +222,7 @@ void systemInit(void)
     __HAL_RCC_UART5_CLK_ENABLE();
     #endif
     #ifdef USE_USART6
-    __HAL_RCC_UART6_CLK_ENABLE();
+    __HAL_RCC_USART6_CLK_ENABLE();
     #endif
     #ifdef USE_USART7
     __HAL_RCC_UART7_CLK_ENABLE();

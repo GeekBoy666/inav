@@ -162,6 +162,18 @@
     {
       while(1) {};
     }
+    
+    /* Select PLLSAI output as USB clock source */
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_CLK48;
+    PeriphClkInitStruct.Clk48ClockSelection = RCC_CLK48SOURCE_PLLSAIP;
+    PeriphClkInitStruct.PLLSAI.PLLSAIN = 384;
+    PeriphClkInitStruct.PLLSAI.PLLSAIQ = 7; 
+    PeriphClkInitStruct.PLLSAI.PLLSAIP = RCC_PLLSAIP_DIV8;
+    if(HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct)  != HAL_OK)
+    {
+      while(1) {};
+    }
 
     /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
        clocks dividers */
