@@ -30,6 +30,8 @@ typedef enum{
     MAX_SPEED_SPI = HIGH_SPEED_SPI
 } SpiSpeed_t;
 
+#define SPI_9MHZ_CLOCK_DIVIDER MEDIUM_SPEED_SPI
+
 typedef enum {
     SPIDEV_1,
     SPIDEV_2,
@@ -48,15 +50,10 @@ void spiResetErrorCounter(SPIDevice instance);
 
 #else
 
-#if defined(STM32F40_41xxx)
-#define LOW_SPEED_SPI       128 // 0.65625 MHz
-#define MEDIUM_SPEED_SPI    8   // 11.5 MHz
-#define HIGH_SPEED_SPI      4   // 21 MHz
-#else
-#define LOW_SPEED_SPI       128 // 0.5625 MHz
-#define MEDIUM_SPEED_SPI    4   // 9 MHz
-#define HIGH_SPEED_SPI      2   // 18 MHz
-#endif
+#define SPI_0_5625MHZ_CLOCK_DIVIDER 128
+#define SPI_18MHZ_CLOCK_DIVIDER     2
+#define SPI_9MHZ_CLOCK_DIVIDER      4
+
 
 bool spiInit(SPI_TypeDef *instance);
 void spiSetDivisor(SPI_TypeDef *instance, uint16_t divisor);

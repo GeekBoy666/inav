@@ -149,23 +149,24 @@ void useRcControlsConfig(modeActivationCondition_t *modeActivationConditions, es
 #endif
 
 #if FLASH_SIZE <= 128
-#define FLASH_TO_RESERVE_FOR_CONFIG 0x800
+    #define FLASH_TO_RESERVE_FOR_CONFIG 0x800
 #else
-#define FLASH_TO_RESERVE_FOR_CONFIG 0x1000
+    #define FLASH_TO_RESERVE_FOR_CONFIG 0x1000
 #endif
 #ifdef USE_HAL_DRIVER
-const uint32_t flash_sectors[] = MCU_FLASH_SECTORS;
-#define CONFIG_START_FLASH_ADDRESS 0x081C0000U//(FLASH_END-(flash_sectors[MCU_FLASH_NR_SECTORS-1]*1024))
-static uint32_t start_add;
+    const uint32_t flash_sectors[] = MCU_FLASH_SECTORS;
+    #define CONFIG_START_FLASH_ADDRESS 0x081C0000U//(FLASH_END-(flash_sectors[MCU_FLASH_NR_SECTORS-1]*1024))
+    static uint32_t start_add;
 #else
 // use the last flash pages for storage
 #ifdef CUSTOM_FLASH_MEMORY_ADDRESS
-size_t custom_flash_memory_address = 0;
-#define CONFIG_START_FLASH_ADDRESS (custom_flash_memory_address)
+    size_t custom_flash_memory_address = 0;
+    #define CONFIG_START_FLASH_ADDRESS (custom_flash_memory_address)
 #else
-// use the last flash pages for storage
-#ifndef CONFIG_START_FLASH_ADDRESS
-#define CONFIG_START_FLASH_ADDRESS (0x08000000 + (uint32_t)((FLASH_PAGE_SIZE * FLASH_PAGE_COUNT) - FLASH_TO_RESERVE_FOR_CONFIG))
+    // use the last flash pages for storage
+    #ifndef CONFIG_START_FLASH_ADDRESS
+        #define CONFIG_START_FLASH_ADDRESS (0x08000000 + (uint32_t)((FLASH_PAGE_SIZE * FLASH_PAGE_COUNT) - FLASH_TO_RESERVE_FOR_CONFIG))
+    #endif
 #endif
 #endif
 

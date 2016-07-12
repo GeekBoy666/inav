@@ -21,6 +21,8 @@
 
 #define TARGET_BOARD_IDENTIFIER "NUCLEOF7"
 
+#define TARGET_MOTOR_COUNT 16
+
 #ifndef USE_HAL_DRIVER
 #define USE_HAL_DRIVER
 #endif
@@ -31,21 +33,21 @@
 #define FLASH_PAGE_SIZE (256*1024)
 
 
-#define LED0
-#define LED1
-#define LED2
-#define LED0_GPIO   GPIOE
-#define LED0_PIN    Pin_15
-#define LED1_GPIO   GPIOE
-#define LED1_PIN    Pin_12
-#define LED2_GPIO   GPIOE
-#define LED2_PIN    Pin_10
+#define LED0 PE15
+#define LED1 PE12
+#define LED2 PE10
+//#define LED0_GPIO   GPIOE
+//#define LED0_PIN    Pin_15
+//#define LED1_GPIO   GPIOE
+//#define LED1_PIN    Pin_12
+//#define LED2_GPIO   GPIOE
+//#define LED2_PIN    Pin_10
 
-#define BEEPER
+#define BEEPER PE4
 #define BEEPER_INVERTED
-#define BEEP_GPIO GPIOE
-#define BEEP_PIN Pin_4 // PA15 (Beeper)
-#define BEEP_PERIPHERAL 0 // FIXME: remove dependency
+//#define BEEP_GPIO GPIOE
+//#define BEEP_PIN Pin_4
+//#define BEEP_PERIPHERAL 0 // FIXME: remove dependency
 
 #define USE_ADC
 // ADC
@@ -95,6 +97,8 @@
 #define USE_MAG_HMC5883
 #define HMC5883_BUS I2C_DEVICE_INT
 #define MAG_HMC5883_ALIGN CW90_DEG
+#define USE_MAG_AK8975
+#define AK8975_BUS I2C_DEVICE_INT
 
 #define BARO
 #define USE_BARO_BMP280
@@ -197,6 +201,7 @@
 #define USE_I2C
 #define I2C_DEVICE_INT (I2CDEV_1)
 #define I2C_DEVICE_EXT (I2CDEV_2)
+#define I2C_DEVICE I2C_DEVICE_INT
 
 #define I2C1_SCL_GPIO GPIOB
 #define I2C1_SCL_PIN Pin_6
@@ -253,3 +258,11 @@
 
 #define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM5 | RCC_APB1Periph_TIM12 | RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC)
 #define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM8 | RCC_APB2Periph_TIM9)
+
+#define TARGET_IO_PORTA 0xffff
+#define TARGET_IO_PORTB 0xffff
+#define TARGET_IO_PORTC 0xffff
+#define TARGET_IO_PORTD 0xffff
+#define TARGET_IO_PORTE 0xffff
+#define TARGET_IO_PORTF 0xffff
+

@@ -53,21 +53,20 @@
 
 // External I2C BARO
 #define BARO
-#define USE_BARO_MS5611
-#define MS5611_BUS I2C_DEVICE_EXT
 #define USE_BARO_BMP085
-#define BMP085_BUS I2C_DEVICE_EXT
+#define USE_BARO_MS5611
 
+#if !defined(OPBL)
+#define USE_BARO_BMP280
+#endif 
 
 // External I2C MAG
 #define MAG
 #define USE_MAG_HMC5883
-#define HMC5883_BUS I2C_DEVICE_EXT
+#if !defined(OPBL)
 #define USE_MAG_AK8975
 #define USE_MAG_MAG3110
 #endif
-
-#define UG2864_BUS I2C_DEVICE_EXT
 
 #define USE_VCP
 #define USE_USART1
@@ -85,7 +84,6 @@
 
 #define USE_I2C
 #define I2C_DEVICE (I2CDEV_2) // Flex port - SCL/PB10, SDA/PB11
-#define I2C_DEVICE_EXT (I2CDEV_2)
 
 #if defined(CC3D_NRF24) || defined(CC3D_NRF24_OPBL)
 #define USE_RX_NRF24
@@ -183,8 +181,14 @@
 #define BIND_PORT  GPIOB
 #define BIND_PIN   Pin_11
 
-#define TARGET_MOTOR_COUNT 6
-//Disables uncommon predefined mixer settings like BiCopter, H6 and similar exotics
+//#define USE_SERIAL_4WAY_BLHELI_INTERFACE
+
+#define NAV
+//#define NAV_AUTO_MAG_DECLINATION
+#define NAV_GPS_GLITCH_DETECTION
+
+#define ENABLE_BLACKBOX_LOGGING_ON_SPIFLASH_BY_DEFAULT
+
 #undef TELEMETRY_FRSKY
 #undef TELEMETRY_HOTT
 #undef TELEMETRY_SMARTPORT
@@ -213,12 +217,13 @@
 #ifndef CC3D_OPBL
 #define LED_STRIP
 #endif
+#endif
+
 
 // DEBUG
 //#define HIL
 //#define USE_FAKE_MAG
 //#define USE_FAKE_BARO
-//#define USE_FAKE_GPS
 //#define USE_FAKE_GPS
 
 // IO - from schematics

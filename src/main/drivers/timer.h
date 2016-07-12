@@ -41,11 +41,6 @@ typedef uint16_t timCCR_t;
 typedef uint16_t timCCER_t;
 typedef uint16_t timSR_t;
 typedef uint16_t timCNT_t;
-#elif defined(STM32F40_41xxx)
-typedef uint32_t timCCR_t;
-typedef uint32_t timCCER_t;
-typedef uint32_t timSR_t;
-typedef uint32_t timCNT_t;
 #elif defined(USE_HAL_DRIVER)
 typedef uint32_t timCCR_t;
 typedef uint32_t timCCER_t;
@@ -89,10 +84,6 @@ typedef struct timerHardware_s {
     uint8_t output;
     ioConfig_t ioMode;
 #if defined(STM32F3) || defined(STM32F4) || defined(USE_HAL_DRIVER)
-    uint8_t alternateFunction;
-#endif
-#ifdef STM32F40_41xxx
-    uint8_t gpioPinSource;             // TODO - this can be removed and pinSource calculated from pin
     uint8_t alternateFunction;
 #endif
 } timerHardware_t;
@@ -165,3 +156,4 @@ void timerStart(void);
 void timerForceOverflow(TIM_TypeDef *tim);
 
 void configTimeBase(TIM_TypeDef *tim, uint16_t period, uint8_t mhz);  // TODO - just for migration
+

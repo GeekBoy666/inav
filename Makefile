@@ -68,11 +68,16 @@ VALID_TARGETS  := $(subst /,, $(subst ./src/main/target/,, $(VALID_TARGETS)))
 VALID_TARGETS  := $(VALID_TARGETS) $(ALT_TARGETS)
 VALID_TARGETS  := $(sort $(VALID_TARGETS))
 
-F3_TARGETS = ALIENWIIF3 CHEBUZZF3 COLIBRI_RACE LUX_RACE MOTOLAB NAZE32PRO RMDO SPARKY SPRACINGF3 STM32F3DISCOVERY
-F4_TARGETS = ANYFC REVO COLIBRI
-F7_TARGETS = MODULOF7 NUCLEOF7
+ifeq ($(filter $(TARGET),$(ALT_TARGETS)), $(TARGET))
+BASE_TARGET    := $(firstword $(subst /,, $(subst ./src/main/target/,, $(dir $(wildcard $(ROOT)/src/main/target/*/$(TARGET).mk)))))
+-include $(ROOT)/src/main/target/$(BASE_TARGET)/$(TARGET).mk
+else
+BASE_TARGET    := $(TARGET)
+endif
 
-VALID_TARGETS = $(64K_TARGETS) $(128K_TARGETS) $(256K_TARGETS) $(F4_TARGETS) $(F7_TARGETS)
+ifeq ($(filter $(TARGET),$(OPBL_TARGETS)), $(TARGET))
+OPBL            = yes
+endif
 
 # silently ignore if the file is not present. Allows for target specific.
 -include $(ROOT)/src/main/target/$(BASE_TARGET)/target.mk
@@ -83,14 +88,14 @@ ifeq ($(filter $(TARGET),$(VALID_TARGETS)),)
 $(error Target '$(TARGET)' is not valid, must be one of $(VALID_TARGETS). Have you prepared a valid target.mk?)
 endif
 
-ifeq ($(filter $(TARGET),$(F1_TARGETS) $(F3_TARGETS) $(F4_TARGETS)),)
+ifeq ($(filter $(TARGET),$(F1_TARGETS) $(F3_TARGETS) $(F4_TARGETS) $(F7_TARGETS)),)
 $(error Target '$(TARGET)' has not specified a valid STM group, must be one of F1, F3, F405, or F411. Have you prepared a valid target.mk?)
 endif
 
 128K_TARGETS  = $(F1_TARGETS)
 256K_TARGETS  = $(F3_TARGETS)
 512K_TARGETS  = $(F411_TARGETS)
-1024K_TARGETS = $(F405_TARGETS)
+1024K_TARGETS = $(F405_TARGETS) $(F7_TARGETS)
 
 # Configure default flash sizes for the targets (largest size specified gets hit first) if flash not specified already.
 ifeq ($(FLASH_SIZE),)
@@ -100,12 +105,8 @@ else ifeq ($(TARGET),$(filter $(TARGET),$(512K_TARGETS)))
 FLASH_SIZE = 512
 else ifeq ($(TARGET),$(filter $(TARGET),$(256K_TARGETS)))
 FLASH_SIZE = 256
-else ifeq ($(TARGET),$(filter $(TARGET),ANYFC REVO COLIBRI))
-FLASH_SIZE = 256
-else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7))
-FLASH_SIZE = 1024
-else ifeq ($(TARGET),$(filter $(TARGET),NUCLEOF7))
-FLASH_SIZE = 2048
+else ifeq ($(TARGET),$(filter $(TARGET),$(128K_TARGETS)))
+FLASH_SIZE = 128
 else
 $(error FLASH_SIZE not configured for target $(TARGET))
 endif
@@ -179,130 +180,10 @@ LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_f303_$(FLASH_SIZE)k.ld
 ARCH_FLAGS      = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fsingle-precision-constant -Wdouble-promotion
 DEVICE_FLAGS    = -DSTM32F303xC -DSTM32F303
 TARGET_FLAGS    = -D$(TARGET)
-ifeq ($(TARGET),CHEBUZZF3)
-# CHEBUZZ is a VARIANT of STM32F3DISCOVERY
-TARGET_FLAGS := $(TARGET_FLAGS) -DSTM32F3DISCOVERY
-endif
-
-ifeq ($(TARGET),RMDO)
-# RMDO is a VARIANT of SPRACINGF3
-TARGET_FLAGS := $(TARGET_FLAGS) -DSPRACINGF3
-endif
-
-ifeq ($(TARGET),COLIBRI_RACE)
-.DEFAULT_GOAL := binary
-endif
-
-else ifeq ($(TARGET),$(filter $(TARGET),ANYFC REVO COLIBRI))
-
-STDPERIPH_DIR  = $(ROOT)/lib/main/STM32F4xx_StdPeriph_Driver
-STDPERIPH_SRC  = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*.c))
-EXCLUDES       = stm32f4xx_crc.c \
-                 stm32f4xx_can.c \
-                 stm32f4xx_fmc.c \
-                 stm32f4xx_sai.c
-STDPERIPH_SRC := $(filter-out ${EXCLUDES}, $(STDPERIPH_SRC))
-
-USBCORE_DIR = $(ROOT)/lib/main/STM32_USB_Device_Library/Core
-USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/src/*.c))
-
-USBOTG_DIR = $(ROOT)/lib/main/STM32_USB_OTG_Driver
-USBOTG_SRC = $(notdir $(wildcard $(USBOTG_DIR)/src/*.c))
-EXCLUDES   = usb_bsp_template.c \
-             usb_hcd_int.c \
-             usb_hcd.c \
-             usb_otg.c
-
-USBOTG_SRC := $(filter-out ${EXCLUDES}, $(USBOTG_SRC))
-
-USBCDC_DIR  = $(ROOT)/lib/main/STM32_USB_Device_Library/Class/cdc
-USBCDC_SRC  = $(notdir $(wildcard $(USBCDC_DIR)/src/*.c))
-EXCLUDES    = usbd_cdc_if_template.c
-USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
-
-VPATH := $(VPATH):$(USBOTG_DIR)/src:$(USBCORE_DIR)/src:$(USBCDC_DIR)/src
-
-DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
-                        $(USBOTG_SRC) \
-                        $(USBCORE_SRC) \
-                        $(USBCDC_SRC)
-
-VPATH     := $(VPATH):$(CMSIS_DIR)/CM1/CoreSupport:$(CMSIS_DIR)/CM1/DeviceSupport/ST/STM32F4xx
-CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM1/CoreSupport/*.c \
-             $(CMSIS_DIR)/CM1/DeviceSupport/ST/STM32F4xx/*.c))
-
-INCLUDE_DIRS   := $(INCLUDE_DIRS) \
-                  $(STDPERIPH_DIR)/inc \
-                  $(CMSIS_DIR)/CM7/CoreSupport \
-                  $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/Include \
-                  $(ROOT)/src/main/vcpf4
-
-ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
-DEVICE_FLAGS    = -DSTM32F745xx -DUSE_HAL_DRIVER
-ifeq ($(TARGET),MODULOF7)
-DEVICE_FLAGS   += -DHSE_VALUE=8000000
-LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
-.DEFAULT_GOAL  := binary
-endif
-TARGET_FLAGS   = -D$(TARGET)
-
-# F7 targets
-else ifeq ($(TARGET),$(filter $(TARGET),MODULOF7 NUCLEOF7))
-
-STDPERIPH_DIR  = $(ROOT)/lib/main/STM32F7xx_HAL_Driver
-STDPERIPH_SRC  = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*.c))
-EXCLUDES       = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*_template.c))
-
-STDPERIPH_SRC := $(filter-out ${EXCLUDES}, $(STDPERIPH_SRC))
-
-USBCORE_DIR = $(ROOT)/Middlewares/ST/STM32_USB_Device_Library/Core
-USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/Src/*.c))
-EXCLUDES    = usbd_conf_template.c
-USBCORE_SRC := $(filter-out ${EXCLUDES}, $(USBCORE_SRC))
-
-USBCDC_DIR = $(ROOT)/Middlewares/ST/STM32_USB_Device_Library/Class/CDC
-USBCDC_SRC = $(notdir $(wildcard $(USBCDC_DIR)/Src/*.c))
-EXCLUDES   = usbd_cdc_if_template.c
-USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
-
-VPATH := $(VPATH):$(USBCDC_DIR)/Src:$(USBCORE_DIR)/Src
-
-DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
-                        $(USBCORE_SRC) \
-                        $(USBCDC_SRC)
-
-VPATH     := $(VPATH):$(CMSIS_DIR)/CM7/CoreSupport:$(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx
-CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM7/CoreSupport/*.c \
-             $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/*.c))
-
-INCLUDE_DIRS   := $(INCLUDE_DIRS) \
-                  $(STDPERIPH_DIR)/inc \
-                  $(CMSIS_DIR)/CM7/CoreSupport \
-                  $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/Include \
-                  $(USBCORE_DIR)/Inc \
-                  $(USBCDC_DIR)/Inc \
-                  $(ROOT)/src/main/vcp_hal
-
-
-ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
-DEVICE_FLAGS    = -DUSE_HAL_DRIVER
-ifeq ($(TARGET),MODULOF7)
-DEVICE_FLAGS   += -DHSE_VALUE=8000000 -DSTM32F745xx
-LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
-.DEFAULT_GOAL  := binary
-endif
-ifeq ($(TARGET),NUCLEOF7)
-DEVICE_FLAGS   += -DHSE_VALUE=8000000 -DSTM32F767xx
-LD_SCRIPT       = $(LINKER_DIR)/STM32F767ZITx_FLASH.ld
-.DEFAULT_GOAL  := binary
-endif
-TARGET_FLAGS   = -D$(TARGET)
-
-else ifeq ($(TARGET),$(filter $(TARGET),EUSTM32F103RC PORT103R))
-# TARGETS: EUSTM32F103RC PORT103R
-
-
-STDPERIPH_DIR   = $(ROOT)/lib/main/STM32F10x_StdPeriph_Driver
+# End F3 targets
+#
+# Start F4 targets
+else ifeq ($(TARGET),$(filter $(TARGET), $(F4_TARGETS)))
 
 #STDPERIPH
 STDPERIPH_DIR   = $(ROOT)/lib/main/STM32F4xx_StdPeriph_Driver
@@ -394,6 +275,67 @@ DEVICE_FLAGS    += -DHSE_VALUE=$(HSE_VALUE)
 
 TARGET_FLAGS = -D$(TARGET)
 # End F4 targets
+#
+# Start F7 targets
+else ifeq ($(TARGET),$(filter $(TARGET), $(F7_TARGETS)))
+
+#STDPERIPH
+STDPERIPH_DIR  = $(ROOT)/lib/main/STM32F7xx_HAL_Driver
+STDPERIPH_SRC  = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*.c))
+EXCLUDES       = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*_template.c))
+STDPERIPH_SRC := $(filter-out ${EXCLUDES}, $(STDPERIPH_SRC))
+
+#USB
+USBCORE_DIR = $(ROOT)/Middlewares/ST/STM32_USB_Device_Library/Core
+USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/Src/*.c))
+EXCLUDES    = usbd_conf_template.c
+USBCORE_SRC := $(filter-out ${EXCLUDES}, $(USBCORE_SRC))
+
+USBCDC_DIR = $(ROOT)/Middlewares/ST/STM32_USB_Device_Library/Class/CDC
+USBCDC_SRC = $(notdir $(wildcard $(USBCDC_DIR)/Src/*.c))
+EXCLUDES   = usbd_cdc_if_template.c
+USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
+
+VPATH := $(VPATH):$(USBCDC_DIR)/Src:$(USBCORE_DIR)/Src
+
+DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
+                        $(USBCORE_SRC) \
+                        $(USBCDC_SRC)
+
+#CMSIS
+VPATH     := $(VPATH):$(CMSIS_DIR)/CM7/CoreSupport:$(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx
+CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM7/CoreSupport/*.c \
+             $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/*.c))
+
+INCLUDE_DIRS   := $(INCLUDE_DIRS) \
+                  $(STDPERIPH_DIR)/inc \
+                  $(CMSIS_DIR)/CM7/CoreSupport \
+                  $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/Include \
+                  $(USBCORE_DIR)/Inc \
+                  $(USBCDC_DIR)/Inc \
+                  $(ROOT)/src/main/vcp_hal
+
+ifneq ($(filter SDCARD,$(FEATURES)),)
+INCLUDE_DIRS    := $(INCLUDE_DIRS) \
+                   $(FATFS_DIR)
+VPATH           := $(VPATH):$(FATFS_DIR)
+endif
+
+#Flags
+ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
+DEVICE_FLAGS    = -DUSE_HAL_DRIVER
+ifeq ($(TARGET),MODULOF7)
+DEVICE_FLAGS   += -DHSE_VALUE=8000000 -DSTM32F745xx
+LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
+else ifeq ($(TARGET),NUCLEOF7)
+DEVICE_FLAGS   += -DHSE_VALUE=8000000 -DSTM32F767xx
+LD_SCRIPT       = $(LINKER_DIR)/STM32F767ZITx_FLASH.ld
+else
+$(error Unknown F7 target)
+endif
+
+TARGET_FLAGS = -D$(TARGET)
+# End F7 targets
 #
 # Start F1 targets
 else
@@ -574,12 +516,8 @@ HIGHEND_SRC = \
             telemetry/frsky.c \
             telemetry/hott.c \
             telemetry/smartport.c \
-            telemetry/ltm.c \
-            sensors/sonar.c \
-            sensors/barometer.c \
-            sensors/pitotmeter.c \
-            blackbox/blackbox.c \
-            blackbox/blackbox_io.c
+		    telemetry/mavlink.c \
+            telemetry/ltm.c
 
 ifeq ($(TARGET),$(filter $(TARGET),$(F4_TARGETS)))
 VCP_SRC = \
@@ -589,6 +527,12 @@ VCP_SRC = \
             vcpf4/usbd_usr.c \
             vcpf4/usbd_cdc_vcp.c \
             drivers/serial_usb_vcp.c
+else ifeq ($(TARGET),$(filter $(TARGET),$(F7_TARGETS)))
+VCP_SRC = \
+            vcp_hal/usbd_desc.c \
+            vcp_hal/usbd_conf.c \
+            vcp_hal/usbd_cdc_interface.c \
+            drivers/serial_usb_vcp_hal.c
 else
 VCP_SRC = \
             vcp/hw_config.c \
@@ -601,161 +545,7 @@ VCP_SRC = \
             drivers/serial_usb_vcp.c
 endif
 
-VCPF4_SRC = \
-            vcpf4/stm32f4xx_it.c \
-            vcpf4/usb_bsp.c \
-            vcpf4/usbd_desc.c \
-            vcpf4/usbd_usr.c \
-            vcpf4/usbd_cdc_vcp.c \
-            drivers/serial_usb_vcp.c
-
-NAZE_SRC = startup_stm32f10x_md_gcc.S \
-            drivers/accgyro_adxl345.c \
-            drivers/accgyro_bma280.c \
-            drivers/accgyro_l3g4200d.c \
-            drivers/accgyro_mma845x.c \
-            drivers/accgyro_mpu.c \
-            drivers/accgyro_mpu3050.c \
-            drivers/accgyro_mpu6050.c \
-            drivers/accgyro_mpu6500.c \
-            drivers/accgyro_spi_mpu6500.c \
-            drivers/adc.c \
-            drivers/adc_stm32f10x.c \
-            drivers/barometer_bmp085.c \
-            drivers/barometer_ms5611.c \
-            drivers/barometer_bmp280.c \
-            drivers/bus_spi.c \
-            drivers/bus_i2c_stm32f10x.c \
-            drivers/compass_hmc5883l.c \
-            drivers/compass_mag3110.c \
-            drivers/compass_ak8975.c \
-            drivers/display_ug2864hsweg01.h \
-            drivers/flash_m25p16.c \
-            drivers/gpio_stm32f10x.c \
-            drivers/inverter.c \
-            drivers/light_led_stm32f10x.c \
-            drivers/light_ws2811strip.c \
-            drivers/light_ws2811strip_stm32f10x.c \
-            drivers/sonar_hcsr04.c \
-            drivers/sonar_srf10.c \
-            drivers/pwm_mapping.c \
-            drivers/pwm_output.c \
-            drivers/pwm_rx.c \
-            drivers/serial_softserial.c \
-            drivers/serial_uart.c \
-            drivers/serial_uart_stm32f10x.c \
-            drivers/sound_beeper_stm32f10x.c \
-            drivers/system_stm32f10x.c \
-            drivers/timer.c \
-            drivers/timer_stm32f10x.c \
-            io/flashfs.c \
-            hardware_revision.c \
-            $(HIGHEND_SRC) \
-            $(COMMON_SRC)
-
-ALIENWIIF1_SRC = $(NAZE_SRC)
-
-EUSTM32F103RC_SRC = startup_stm32f10x_hd_gcc.S \
-            drivers/accgyro_adxl345.c \
-            drivers/accgyro_bma280.c \
-            drivers/accgyro_l3g4200d.c \
-            drivers/accgyro_mma845x.c \
-            drivers/accgyro_mpu.c \
-            drivers/accgyro_mpu3050.c \
-            drivers/accgyro_mpu6050.c \
-            drivers/accgyro_spi_mpu6000.c \
-            drivers/accgyro_spi_mpu6500.c \
-            drivers/adc.c \
-            drivers/adc_stm32f10x.c \
-            drivers/barometer_bmp085.c \
-            drivers/barometer_ms5611.c \
-            drivers/bus_i2c_stm32f10x.c \
-            drivers/bus_spi.c \
-            drivers/compass_ak8975.c \
-            drivers/compass_mag3110.c \
-            drivers/compass_hmc5883l.c \
-            drivers/display_ug2864hsweg01.c \
-            drivers/flash_m25p16.c \
-            drivers/gpio_stm32f10x.c \
-            drivers/inverter.c \
-            drivers/light_led_stm32f10x.c \
-            drivers/light_ws2811strip.c \
-            drivers/light_ws2811strip_stm32f10x.c \
-            drivers/pwm_mapping.c \
-            drivers/pwm_output.c \
-            drivers/pwm_rx.c \
-            drivers/serial_softserial.c \
-            drivers/serial_uart.c \
-            drivers/serial_uart_stm32f10x.c \
-            drivers/sonar_hcsr04.c \
-            drivers/sonar_srf10.c \
-            drivers/sound_beeper_stm32f10x.c \
-            drivers/system_stm32f10x.c \
-            drivers/timer.c \
-            drivers/timer_stm32f10x.c \
-            io/flashfs.c \
-            $(HIGHEND_SRC) \
-            $(COMMON_SRC)
-
-PORT103R_SRC = $(EUSTM32F103RC_SRC)
-
-OLIMEXINO_SRC = startup_stm32f10x_md_gcc.S \
-            drivers/accgyro_mpu.c \
-            drivers/accgyro_mpu6050.c \
-            drivers/adc.c \
-            drivers/adc_stm32f10x.c \
-            drivers/barometer_bmp085.c \
-            drivers/bus_i2c_stm32f10x.c \
-            drivers/bus_spi.c \
-            drivers/compass_hmc5883l.c \
-            drivers/compass_mag3110.c \
-            drivers/compass_ak8975.c \
-            drivers/gpio_stm32f10x.c \
-            drivers/light_led_stm32f10x.c \
-            drivers/light_ws2811strip.c \
-            drivers/light_ws2811strip_stm32f10x.c \
-            drivers/pwm_mapping.c \
-            drivers/pwm_output.c \
-            drivers/pwm_rx.c \
-            drivers/serial_softserial.c \
-            drivers/serial_uart.c \
-            drivers/serial_uart_stm32f10x.c \
-            drivers/sonar_hcsr04.c \
-            drivers/sonar_srf10.c \
-            drivers/sound_beeper_stm32f10x.c \
-            drivers/system_stm32f10x.c \
-            drivers/timer.c \
-            drivers/timer_stm32f10x.c \
-            $(HIGHEND_SRC) \
-            $(COMMON_SRC)
-
-CJMCU_SRC = \
-            startup_stm32f10x_md_gcc.S \
-            drivers/adc.c \
-            drivers/adc_stm32f10x.c \
-            drivers/accgyro_mpu.c \
-            drivers/accgyro_mpu6050.c \
-            drivers/bus_i2c_stm32f10x.c \
-            drivers/compass_mag3110.c \
-            drivers/compass_hmc5883l.c \
-            drivers/compass_ak8975.c \
-            drivers/gpio_stm32f10x.c \
-            drivers/light_led_stm32f10x.c \
-            drivers/pwm_mapping.c \
-            drivers/pwm_output.c \
-            drivers/pwm_rx.c \
-            drivers/serial_uart.c \
-            drivers/serial_uart_stm32f10x.c \
-            drivers/sound_beeper_stm32f10x.c \
-            drivers/system_stm32f10x.c \
-            drivers/timer.c \
-            drivers/timer_stm32f10x.c \
-            hardware_revision.c \
-            blackbox/blackbox.c \
-            blackbox/blackbox_io.c \
-            $(COMMON_SRC)
-
-CC3D_SRC = \
+STM32F10x_COMMON_SRC = \
             startup_stm32f10x_md_gcc.S \
             drivers/adc_stm32f10x.c \
             drivers/bus_i2c_stm32f10x.c \
@@ -763,157 +553,8 @@ CC3D_SRC = \
             drivers/inverter.c \
             drivers/serial_softserial.c \
             drivers/serial_uart_stm32f10x.c \
-            drivers/serial_escserial.c \
-            drivers/sonar_hcsr04.c \
-            drivers/sonar_srf10.c \
-            drivers/sound_beeper_stm32f10x.c \
             drivers/system_stm32f10x.c \
             drivers/timer_stm32f10x.c
-
-ANYFC_SRC = \
-            startup_stm32f40xx.s \
-            drivers/accgyro_mpu.c \
-            drivers/accgyro_spi_mpu6000.c \
-            drivers/barometer_ms5611.c \
-            drivers/pitotmeter_ms4525.c \
-            drivers/compass_hmc5883l.c \
-            drivers/display_ug2864hsweg01.c \
-            drivers/adc.c \
-            drivers/adc_stm32f4xx.c \
-            drivers/bus_i2c_stm32f4xx.c \
-            drivers/bus_spi.c \
-            drivers/gpio_stm32f4xx.c \
-            drivers/inverter.c \
-            drivers/light_led_stm32f4xx.c \
-            drivers/light_ws2811strip.c \
-            drivers/light_ws2811strip_stm32f4xx.c \
-            drivers/pwm_mapping.c \
-            drivers/pwm_output.c \
-            drivers/pwm_rx.c \
-            drivers/serial_softserial.c \
-            drivers/serial_escserial.c \
-            drivers/serial_uart.c \
-            drivers/serial_uart_stm32f4xx.c \
-            drivers/sound_beeper_stm32f4xx.c \
-            drivers/system_stm32f4xx.c \
-            drivers/timer.c \
-            drivers/timer_stm32f4xx.c \
-            $(HIGHEND_SRC) \
-            $(COMMON_SRC) \
-            $(VCPF4_SRC)
-
-COLIBRI_SRC = \
-            startup_stm32f40xx.s \
-            drivers/accgyro_mpu.c \
-            drivers/accgyro_spi_mpu6000.c \
-            drivers/barometer_ms5611.c \
-            drivers/pitotmeter_ms4525.c \
-            drivers/compass_hmc5883l.c \
-            drivers/display_ug2864hsweg01.c \
-            drivers/adc.c \
-            drivers/adc_stm32f4xx.c \
-            drivers/bus_i2c_stm32f4xx.c \
-            drivers/bus_spi.c \
-            drivers/gpio_stm32f4xx.c \
-            drivers/inverter.c \
-            drivers/light_led_stm32f4xx.c \
-            drivers/light_ws2811strip.c \
-            drivers/light_ws2811strip_stm32f4xx.c \
-            drivers/pwm_mapping.c \
-            drivers/pwm_output.c \
-            drivers/pwm_rx.c \
-            drivers/serial_softserial.c \
-            drivers/serial_escserial.c \
-            drivers/serial_uart.c \
-            drivers/serial_uart_stm32f4xx.c \
-            drivers/sound_beeper_stm32f4xx.c \
-            drivers/system_stm32f4xx.c \
-            drivers/timer.c \
-            drivers/timer_stm32f4xx.c \
-            drivers/flash_m25p16.c \
-            io/flashfs.c \
-            $(HIGHEND_SRC) \
-            $(COMMON_SRC) \
-            $(VCPF4_SRC)
-
-REVO_SRC = \
-            startup_stm32f40xx.s \
-            drivers/accgyro_mpu.c \
-            drivers/accgyro_spi_mpu6000.c \
-            drivers/barometer_ms5611.c \
-            drivers/pitotmeter_ms4525.c \
-            drivers/compass_hmc5883l.c \
-            drivers/display_ug2864hsweg01.c \
-            drivers/adc.c \
-            drivers/adc_stm32f4xx.c \
-            drivers/bus_i2c_stm32f4xx.c \
-            drivers/bus_spi.c \
-            drivers/gpio_stm32f4xx.c \
-            drivers/inverter.c \
-            drivers/light_led_stm32f4xx.c \
-            drivers/light_ws2811strip.c \
-            drivers/light_ws2811strip_stm32f4xx.c \
-            drivers/pwm_mapping.c \
-            drivers/pwm_output.c \
-            drivers/pwm_rx.c \
-            drivers/serial_softserial.c \
-            drivers/serial_escserial.c \
-            drivers/serial_uart.c \
-            drivers/serial_uart_stm32f4xx.c \
-            drivers/sound_beeper_stm32f4xx.c \
-            drivers/system_stm32f4xx.c \
-            drivers/timer.c \
-            drivers/timer_stm32f4xx.c \
-            drivers/flash_m25p16.c \
-            io/flashfs.c \
-            $(HIGHEND_SRC) \
-            $(COMMON_SRC) \
-            $(VCPF4_SRC)
-
-VCPHAL_SRC = \
-            vcp_hal/usbd_desc.c \
-            vcp_hal/usbd_conf.c \
-            vcp_hal/usbd_cdc_interface.c \
-            drivers/serial_usb_vcp_hal.c
-
-F7COMMON_SRC =  \
-            drivers/system_stm32f7xx.c \
-            drivers/accgyro_mpu.c \
-            drivers/accgyro_spi_mpu6500.c \
-            drivers/barometer_ms5611.c \
-            drivers/barometer_bmp280.c \
-            drivers/pitotmeter_ms4525.c \
-            drivers/compass_hmc5883l.c \
-            drivers/display_ug2864hsweg01.c \
-            drivers/adc.c \
-            drivers/adc_stm32f7xx.c \
-            drivers/bus_i2c_hal.c \
-            drivers/bus_spi_hal.c \
-            drivers/gpio_stm32f7xx.c \
-            drivers/inverter.c \
-            drivers/light_led_hal.c \
-            drivers/light_ws2811strip.c \
-            drivers/light_ws2811strip_hal.c \
-            drivers/pwm_mapping.c \
-            drivers/pwm_output_hal.c \
-            drivers/pwm_rx.c \
-            drivers/serial_escserial.c \
-            drivers/serial_uart_hal.c \
-            drivers/sound_beeper_stm32f7xx.c \
-            drivers/timer_hal.c \
-            drivers/flash_m25p16.c \
-            io/flashfs.c \
-            $(HIGHEND_SRC) \
-            $(COMMON_SRC) \
-            $(VCPHAL_SRC)
-
-MODULOF7_SRC = $(F7COMMON_SRC) \
-            startup_stm32f745xx.s
-
-NUCLEOF7_SRC = $(F7COMMON_SRC) \
-            startup_stm32f767xx.s
-
-#            $(VCPF4_SRC)
 
 STM32F30x_COMMON_SRC = \
             startup_stm32f30x_md_gcc.S \
@@ -941,10 +582,31 @@ STM32F4xx_COMMON_SRC = \
             drivers/system_stm32f4xx.c \
             drivers/timer_stm32f4xx.c \
             drivers/dma_stm32f4xx.c
+            
+STM32F7COMMON_SRC =  \
+            drivers/system_stm32f7xx.c \
+            drivers/adc_stm32f7xx.c \
+            drivers/bus_i2c_hal.c \
+            drivers/bus_spi_hal.c \
+            drivers/gpio_stm32f7xx.c \
+            drivers/inverter.c \
+            drivers/pwm_output_hal.c \
+            drivers/serial_uart_hal.c \
+            drivers/sound_beeper_stm32f7xx.c \
+            drivers/timer_hal.c \
 
 # check if target.mk supplied
 ifeq ($(TARGET),$(filter $(TARGET),$(F4_TARGETS)))
 TARGET_SRC := $(STM32F4xx_COMMON_SRC) $(TARGET_SRC)
+else ifeq ($(TARGET),$(filter $(TARGET),$(F7_TARGETS)))
+EXCLUDES =  drivers/bus_spi.c \
+            drivers/pwm_output.c \
+            drivers/serial_uart.c \
+            drivers/timer.c
+COMMON_SRC   := $(filter-out ${EXCLUDES}, $(COMMON_SRC))
+    
+USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
+TARGET_SRC := $(STM32F7xx_COMMON_SRC) $(TARGET_SRC)
 else ifeq ($(TARGET),$(filter $(TARGET),$(F3_TARGETS)))
 TARGET_SRC := $(STM32F30x_COMMON_SRC) $(TARGET_SRC)
 else ifeq ($(TARGET),$(filter $(TARGET),$(F1_TARGETS)))
@@ -957,7 +619,7 @@ TARGET_SRC += \
             io/flashfs.c
 endif
 
-ifeq ($(TARGET),$(filter $(TARGET),$(F4_TARGETS) $(F3_TARGETS)))
+ifeq ($(TARGET),$(filter $(TARGET),$(F7_TARGETS) $(F4_TARGETS) $(F3_TARGETS)))
 TARGET_SRC += $(HIGHEND_SRC)
 else ifneq ($(filter HIGHEND,$(FEATURES)),)
 TARGET_SRC += $(HIGHEND_SRC)
@@ -1029,6 +691,7 @@ ASFLAGS     = $(ARCH_FLAGS) \
               -MMD -MP
 
 LDFLAGS     = -lm \
+              -nostartfiles \
               --specs=nano.specs \
               -lc \
               -lnosys \

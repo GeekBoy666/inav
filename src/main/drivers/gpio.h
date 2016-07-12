@@ -49,18 +49,7 @@ typedef enum
 } GPIO_Mode;
 #endif
 
-
-#if defined(STM32F4)
-
-/*
-typedef enum
-{
-  GPIO_Mode_IN   = 0x00, // GPIO Input Mode
-  GPIO_Mode_OUT  = 0x01, // GPIO Output Mode
-  GPIO_Mode_AF   = 0x02, // GPIO Alternate function Mode
-  GPIO_Mode_AN   = 0x03  // GPIO Analog In/Out Mode
-}GPIOMode_TypeDef;
-
+#ifdef STM32F4
 typedef enum
 {
     Mode_AIN         = (GPIO_PuPd_NOPULL << 2) | GPIO_Mode_AN,
@@ -136,7 +125,7 @@ typedef struct
 #if defined(USE_HAL_DRIVER)
 static inline void digitalHi(GPIO_TypeDef *p, uint16_t i) { HAL_GPIO_WritePin(p, i, GPIO_PIN_SET); }
 static inline void digitalLo(GPIO_TypeDef *p, uint16_t i) { HAL_GPIO_WritePin(p, i, GPIO_PIN_RESET); }
-#elif defined(STM32F40_41xxx)
+#elif STM32F4
 static inline void digitalHi(GPIO_TypeDef *p, uint16_t i) { p->BSRRL = i; }
 static inline void digitalLo(GPIO_TypeDef *p, uint16_t i)     { p->BSRRH = i; }
 #else

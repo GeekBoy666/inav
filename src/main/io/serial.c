@@ -320,21 +320,6 @@ serialPort_t *openSerialPort(
         serialPort = uartOpen(USART6, callback, baudRate, mode, options);
         break;
 #endif
-#ifdef USE_USART4
-        case SERIAL_PORT_USART4:
-            serialPort = uartOpen(UART4, callback, baudRate, mode, options);
-            break;
-#endif
-#ifdef USE_USART5
-        case SERIAL_PORT_USART5:
-            serialPort = uartOpen(UART5, callback, baudRate, mode, options);
-            break;
-#endif
-#ifdef USE_USART6
-        case SERIAL_PORT_USART6:
-            serialPort = uartOpen(USART6, callback, baudRate, mode, options);
-            break;
-#endif
 #ifdef USE_SOFTSERIAL1
     case SERIAL_PORT_SOFTSERIAL1:
         serialPort = openSoftSerial(SOFTSERIAL1, callback, baudRate, options);

@@ -50,7 +50,6 @@
 #include "sensors/compass.h"
 #include "sensors/acceleration.h"
 #include "sensors/barometer.h"
-#include "sensors/pitotmeter.h"
 #include "sensors/gyro.h"
 #include "sensors/battery.h"
 
@@ -734,17 +733,6 @@ void taskUpdateBaro(void)
     //updatePositionEstimator_BaroTopic(currentTime);
 }
 #endif
-
-#ifdef PITOT
-void taskUpdatePitot(void)
-{
-    if (sensors(SENSOR_PITOT)) {
-        uint32_t newDeadline = pitotUpdate();
-        rescheduleTask(TASK_SELF, newDeadline);
-    }
-}
-#endif
-
 
 #ifdef SONAR
 void taskUpdateSonar(void)

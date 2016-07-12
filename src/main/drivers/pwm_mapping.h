@@ -32,9 +32,9 @@
 #define MAX_SERVOS  8
 
 #else
-#define MAX_PWM_MOTORS  16
+#define MAX_PWM_MOTORS  12
 #define MAX_PWM_SERVOS  8
-#define MAX_MOTORS  16
+#define MAX_MOTORS  12
 #define MAX_SERVOS  8
 #endif
 
@@ -65,10 +65,6 @@ typedef struct drv_pwm_config_s {
 #endif
 #ifdef STM32F303xC
     bool useUART3;
-#endif
-#ifdef STM32F40_41xxx
-    bool useUART2;
-    bool useUART6;
 #endif
     bool useVbat;
     bool useOneshot;

@@ -35,18 +35,15 @@
 
 #define ACC
 #define USE_ACC_MPU6050
-#define MPU6050_BUS I2C_DEVICE_INT
 
 #define ACC_MPU6050_ALIGN   CW270_DEG
 
 #define BARO
 #define USE_BARO_MS5611
-#define MS5611_BUS I2C_DEVICE_INT
 
 #define MAG
 #define USE_MAG_HMC5883
 #define USE_MAG_AK8975
-#define AK8975_BUS I2C_DEVICE_INT
 #define USE_MAG_MAG3110
 
 #define MAG_AK8975_ALIGN CW180_DEG_FLIP
@@ -81,7 +78,7 @@
 // Note: PA5 and PA0 are N/C on the sparky - potentially use for ADC or LED STRIP?
 
 #define USE_I2C
-#define I2C_DEVICE_INT (I2CDEV_2) // SDA (PA10/AF4), SCL (PA9/AF4)
+#define I2C_DEVICE (I2CDEV_2) // SDA (PA10/AF4), SCL (PA9/AF4)
 
 #define I2C2_SCL_GPIO        GPIOA
 #define I2C2_SCL_GPIO_AF     GPIO_AF_4
@@ -111,9 +108,6 @@
 #define NAV
 #define NAV_AUTO_MAG_DECLINATION
 #define NAV_GPS_GLITCH_DETECTION
-
-#define UG2864_BUS I2C_DEVICE_INT
-
 
 #define SONAR
 #define SONAR_TRIGGER_PIN           Pin_2   // PWM6 (PA2) - only 3.3v ( add a 1K Ohms resistor )

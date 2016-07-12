@@ -115,7 +115,7 @@ uint32_t IO_EXTI_Line(IO_t io)
     return 1 << IO_GPIOPinIdx(io);
 #elif defined(STM32F3)
     return IO_GPIOPinIdx(io);
-#elif defined(STM32F4)
+#elif defined(STM32F4) || defined(STM32F7)
     return 1 << IO_GPIOPinIdx(io);
 #else
 # error "Unknown target type"
@@ -162,6 +162,8 @@ void IOLo(IO_t io)
         return;
 #ifdef STM32F4
     IO_GPIO(io)->BSRRH = IO_Pin(io);
+#elif USE_HAL_DRIVER
+    HAL_GPIO_WritePin(IO_GPIO(io), IO_Pin(io), false);
 #else
     IO_GPIO(io)->BRR = IO_Pin(io);
 #endif

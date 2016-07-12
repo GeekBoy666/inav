@@ -223,20 +223,11 @@ void configureMPUDataReadyInterruptHandling(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 #endif
 
-#ifdef STM32F40_41xxx
-    /* Enable SYSCFG clock otherwise the EXTI irq handlers are not called */
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
-#endif
-
 #ifdef STM32F10X
     gpioExtiLineConfig(mpuIntExtiConfig->exti_port_source, mpuIntExtiConfig->exti_pin_source);
 #endif
 
 #ifdef STM32F303xC
-    gpioExtiLineConfig(mpuIntExtiConfig->exti_port_source, mpuIntExtiConfig->exti_pin_source);
-#endif
-
-#ifdef STM32F40_41xxx
     gpioExtiLineConfig(mpuIntExtiConfig->exti_port_source, mpuIntExtiConfig->exti_pin_source);
 #endif
 
@@ -248,27 +239,18 @@ void configureMPUDataReadyInterruptHandling(void)
 #endif
 
     registerExtiCallbackHandler(mpuIntExtiConfig->exti_irqn, MPU_DATA_READY_EXTI_Handler);
-#ifdef USE_HAL_DRIVER
-    /// TODO: HAL EXTI implementation
-    
-    GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStructure.Pull = GPIO_NOPULL;
-    GPIO_InitStructure.Pin = mpuIntExtiConfig->gpioPin;
-    HAL_GPIO_Init(mpuIntExtiConfig->gpioPort, &GPIO_InitStructure);
-    
-    HAL_NVIC_SetPriority(mpuIntExtiConfig->exti_irqn, NVIC_PRIORITY_BASE(NVIC_PRIO_MPU_DATA_READY), NVIC_PRIORITY_SUB(NVIC_PRIO_MPU_DATA_READY));
-    HAL_NVIC_EnableIRQ(mpuIntExtiConfig->exti_irqn);
-#else
+
     EXTI_ClearITPendingBit(mpuIntExtiConfig->exti_line);
 
+    /// TODO: HAL implement EXTI
+#ifndef USE_HAL_DRIVER
     EXTI_InitTypeDef EXTIInit;
     EXTIInit.EXTI_Line = mpuIntExtiConfig->exti_line;
     EXTIInit.EXTI_Mode = EXTI_Mode_Interrupt;
     EXTIInit.EXTI_Trigger = EXTI_Trigger_Rising;
     EXTIInit.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTIInit);
-    
+
     NVIC_InitTypeDef NVIC_InitStructure;
 
     NVIC_InitStructure.NVIC_IRQChannel = mpuIntExtiConfig->exti_irqn;
@@ -277,7 +259,6 @@ void configureMPUDataReadyInterruptHandling(void)
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 #endif
-
 #endif
 }
 
@@ -291,11 +272,6 @@ void mpuIntExtiInit(void)
         return;
     }
 
-#ifdef STM32F40_41xxx
-        if (mpuIntExtiConfig->gpioAHB1Peripherals) {
-            RCC_AHB1PeriphClockCmd(mpuIntExtiConfig->gpioAHB1Peripherals, ENABLE);
-        }
-#endif
 #ifdef STM32F303
         if (mpuIntExtiConfig->gpioAHBPeripherals) {
             RCC_AHBPeriphClockCmd(mpuIntExtiConfig->gpioAHBPeripherals, ENABLE);
@@ -319,13 +295,13 @@ void mpuIntExtiInit(void)
 
 static bool mpuReadRegisterI2C(uint8_t reg, uint8_t length, uint8_t* data)
 {
-    bool ack = i2cRead(MPU_ADDRESS, reg, length, data, I2C_DEVICE_INT);
+    bool ack = i2cRead(MPU_ADDRESS, reg, length, data);
     return ack;
 }
 
 static bool mpuWriteRegisterI2C(uint8_t reg, uint8_t data)
 {
-    bool ack = i2cWrite(MPU_ADDRESS, reg, data, I2C_DEVICE_INT);
+    bool ack = i2cWrite(MPU_ADDRESS, reg, data);
     return ack;
 }
 
