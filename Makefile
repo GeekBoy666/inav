@@ -323,12 +323,12 @@ endif
 
 #Flags
 ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
-DEVICE_FLAGS    = -DUSE_HAL_DRIVER
+DEVICE_FLAGS    = -DUSE_HAL_DRIVER -DHSE_VALUE=8000000
 ifeq ($(TARGET),MODULOF7)
-DEVICE_FLAGS   += -DHSE_VALUE=8000000 -DSTM32F745xx
+DEVICE_FLAGS   += -DSTM32F745xx
 LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
 else ifeq ($(TARGET),NUCLEOF7)
-DEVICE_FLAGS   += -DHSE_VALUE=8000000 -DSTM32F767xx
+DEVICE_FLAGS   += -DSTM32F767xx
 LD_SCRIPT       = $(LINKER_DIR)/STM32F767ZITx_FLASH.ld
 else
 $(error Unknown F7 target)
@@ -583,7 +583,9 @@ STM32F4xx_COMMON_SRC = \
             drivers/timer_stm32f4xx.c \
             drivers/dma_stm32f4xx.c
             
-STM32F7COMMON_SRC =  \
+STM32F7xx_COMMON_SRC =  \
+            startup_stm32f767xx.s \
+            target/stm32f7xx_hal_compat.c \
             drivers/system_stm32f7xx.c \
             drivers/adc_stm32f7xx.c \
             drivers/bus_i2c_hal.c \
@@ -592,8 +594,8 @@ STM32F7COMMON_SRC =  \
             drivers/inverter.c \
             drivers/pwm_output_hal.c \
             drivers/serial_uart_hal.c \
-            drivers/sound_beeper_stm32f7xx.c \
-            drivers/timer_hal.c \
+            drivers/timer_hal.c
+            
 
 # check if target.mk supplied
 ifeq ($(TARGET),$(filter $(TARGET),$(F4_TARGETS)))
@@ -691,7 +693,6 @@ ASFLAGS     = $(ARCH_FLAGS) \
               -MMD -MP
 
 LDFLAGS     = -lm \
-              -nostartfiles \
               --specs=nano.specs \
               -lc \
               -lnosys \

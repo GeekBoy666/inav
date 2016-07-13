@@ -103,8 +103,9 @@ static bool i2cHandleHardwareFailure(I2CDevice bus)
     return false;
 }
 
-bool i2cWriteBuffer(uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data, I2CDevice bus)
+bool i2cWriteBuffer(uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data)
 {
+    I2CDevice bus = I2C_DEVICE;
     HAL_StatusTypeDef status;
     
     if(reg_ == 0xFF)
@@ -118,13 +119,14 @@ bool i2cWriteBuffer(uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data, I2
     return true;
 }
 
-bool i2cWrite(uint8_t addr_, uint8_t reg_, uint8_t data, I2CDevice bus)
+bool i2cWrite(uint8_t addr_, uint8_t reg_, uint8_t data)
 {
-    return i2cWriteBuffer(addr_, reg_, 1, &data, bus);
+    return i2cWriteBuffer(addr_, reg_, 1, &data);
 }
 
-bool i2cRead(uint8_t addr_, uint8_t reg_, uint8_t len, uint8_t* buf, I2CDevice bus)
+bool i2cRead(uint8_t addr_, uint8_t reg_, uint8_t len, uint8_t* buf)
 {
+    I2CDevice bus = I2C_DEVICE;
     HAL_StatusTypeDef status;
     
     if(reg_ == 0xFF)

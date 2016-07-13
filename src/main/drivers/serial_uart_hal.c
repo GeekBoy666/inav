@@ -457,7 +457,7 @@ void uartStartTxDMA(uartPort_t *s)
 
 }
 
-uint8_t uartTotalRxBytesWaiting(serialPort_t *instance)
+uint32_t uartTotalRxBytesWaiting(serialPort_t *instance)
 {
     uartPort_t *s = (uartPort_t*)instance;
 

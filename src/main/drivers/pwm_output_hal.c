@@ -23,6 +23,8 @@
 #include "platform.h"
 
 #include "gpio.h"
+#include "io.h"
+#include "io_impl.h"
 #include "timer.h"
 
 #include "flight/failsafe.h" // FIXME dependency into the main code from a driver
@@ -75,17 +77,27 @@ static void pwmOCConfig(TIM_TypeDef *tim, uint32_t channel, uint16_t value)
     HAL_TIM_PWM_ConfigChannel(Handle, &TIM_OCInitStructure, channel);
 }
 
-static void pwmGPIOConfig(const timerHardware_t *timerHardwar)
-{
-    GPIO_InitTypeDef init;
-    init.Speed = GPIO_SPEED_LOW;
-    init.Alternate = timerHardwar->alternateFunction;
-    init.Pin = timerHardwar->pin;
-    init.Pull = GPIO_PULLDOWN;
-    init.Mode = timerHardwar->gpioInputMode;
-    
-    HAL_GPIO_Init(timerHardwar->gpio, &init);
-}
+//static void pwmGPIOConfig(const timerHardware_t *timerHardwar)
+//{
+//    GPIO_InitTypeDef init;
+//    init.Speed = GPIO_SPEED_LOW;
+//    init.Alternate = timerHardwar->alternateFunction;
+//    init.Pin = IO_PINBYTAG(timerHardware->tag);
+//    init.Pull = GPIO_PULLDOWN;
+//    init.Mode = GPIO_MODE_AF_PP;
+//    GPIO_TypeDef* port = IO_GPIOBYTAG(timerHardware->tag);
+//    HAL_GPIO_Init( port, &init);
+//}
+
+//static void pwmGPIOConfig(GPIO_TypeDef *gpio, uint32_t pin, GPIO_Mode mode)
+//{
+//    gpio_config_t cfg;
+
+//    cfg.pin = pin;
+//    cfg.mode = mode;
+//    cfg.speed = Speed_2MHz;
+//    IOConfigGPIOAF(gpio, &cfg);
+//}
 
 static pwmOutputPort_t *pwmOutConfig(const timerHardware_t *timerHardware, uint8_t mhz, uint16_t period, uint16_t value)
 {
@@ -94,11 +106,13 @@ static pwmOutputPort_t *pwmOutConfig(const timerHardware_t *timerHardware, uint8
     if(Handle == NULL) return p;
 
     configTimeBase(timerHardware->tim, period, mhz);
-    pwmGPIOConfig(timerHardware);
+    //pwmGPIOConfig(timerHardware);
+    //pwmGPIOConfig(IO_GPIOBYTAG(timerHardware->tag), IO_PINBYTAG(timerHardware->tag), Mode_AF_PP);
+    IOConfigGPIOAF(IOGetByTag(timerHardware->tag), timerHardware->ioMode, timerHardware->alternateFunction);
 
 
     pwmOCConfig(timerHardware->tim, timerHardware->channel, value);
-    if (timerHardware->outputEnable)
+    if (timerHardware->output)
         HAL_TIM_PWM_Start(Handle, timerHardware->channel);
     else        
         HAL_TIM_PWM_Stop(Handle, timerHardware->channel);

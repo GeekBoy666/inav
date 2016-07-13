@@ -714,15 +714,15 @@ void timerInit(void)
 #endif
 
 
-    for (uint8_t timerIndex = 0; timerIndex < USABLE_TIMER_CHANNEL_COUNT; timerIndex++) {
-        const timerHardware_t *timerHardwarePtr = &timerHardware[timerIndex];
-        GPIO_InitTypeDef gpioInit;
-        gpioInit.Mode = GPIO_MODE_INPUT;        // Initial make them all input.
-        gpioInit.Pull = GPIO_NOPULL;
-        gpioInit.Speed = GPIO_SPEED_LOW;
-        gpioInit.Pin = timerHardwarePtr->pin;
-        HAL_GPIO_Init(timerHardwarePtr->gpio, &gpioInit);
-    }
+//    for (uint8_t timerIndex = 0; timerIndex < USABLE_TIMER_CHANNEL_COUNT; timerIndex++) {
+//        const timerHardware_t *timerHardwarePtr = &timerHardware[timerIndex];
+//        GPIO_InitTypeDef gpioInit;
+//        gpioInit.Mode = GPIO_MODE_INPUT;        // Initial make them all input.
+//        gpioInit.Pull = GPIO_NOPULL;
+//        gpioInit.Speed = GPIO_SPEED_LOW;
+//        gpioInit.Pin = timerHardwarePtr->pin;
+//        HAL_GPIO_Init(timerHardwarePtr->gpio, &gpioInit);
+//    }
 
 
 // initialize timer channel structures

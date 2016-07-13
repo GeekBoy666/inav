@@ -61,7 +61,7 @@ bool isUsbVcpTransmitBufferEmpty(serialPort_t *instance)
     return true;
 }
 
-uint8_t usbVcpAvailable(serialPort_t *instance)
+uint32_t usbVcpAvailable(serialPort_t *instance)
 {
     UNUSED(instance);
     uint32_t receiveLength = vcpAvailable();

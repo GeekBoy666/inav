@@ -105,6 +105,6 @@ void LED_STRIP_DMA_IRQHandler(void)
 void ws2811LedStripDMAEnable(void)
 {
     __HAL_TIM_SET_COUNTER(&ledTimHandle, 0);
-    HAL_TIM_PWM_Start_DMA(&ledTimHandle, LED_STRIP_TIMER_CHANNEL, ledStripDMABuffer, WS2811_DMA_BUFFER_SIZE);
+    HAL_TIM_PWM_Start_DMA(&ledTimHandle, LED_STRIP_TIMER_CHANNEL, (uint32_t*)ledStripDMABuffer, WS2811_DMA_BUFFER_SIZE);
 }
 

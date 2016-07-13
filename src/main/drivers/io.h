@@ -64,16 +64,17 @@ typedef uint8_t ioConfig_t;  // packed IO configuration
 #elif defined(USE_HAL_DRIVER)
 
 #define IO_CONFIG(mode, speed, otype, pupd) ((mode) | ((speed) << 2) | ((otype) << 4) | ((pupd) << 5))
-#define GPIO_Mode_OUT       0
-#define GPIO_Mode_IN        1
+#define GPIO_Mode_IN        0
+#define GPIO_Mode_OUT       1
 #define GPIO_Mode_AF        2
+#define GPIO_Mode_Analog    3
 
 #define GPIO_OType_PP       0
 #define GPIO_OType_OD       1
 
 #define GPIO_PuPd_NOPULL    0
-#define GPIO_PuPd_DOWN      1
-#define GPIO_PuPd_UP        2
+#define GPIO_PuPd_UP        1
+#define GPIO_PuPd_DOWN      2
 
 #define IOCFG_OUT_PP         IO_CONFIG(GPIO_Mode_OUT, 0, GPIO_OType_PP, GPIO_PuPd_NOPULL)  // TODO
 #define IOCFG_OUT_OD         IO_CONFIG(GPIO_Mode_OUT, 0, GPIO_OType_OD, GPIO_PuPd_NOPULL)
@@ -114,7 +115,7 @@ resourceType_t IOGetResources(IO_t io);
 IO_t IOGetByTag(ioTag_t tag);
 
 void IOConfigGPIO(IO_t io, ioConfig_t cfg);
-#if defined(STM32F3) || defined(STM32F4)
+#if defined(STM32F3) || defined(STM32F4) || defined(USE_HAL_DRIVER) 
 void IOConfigGPIOAF(IO_t io, ioConfig_t cfg, uint8_t af);
 #endif
 
