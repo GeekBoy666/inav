@@ -1,3 +1,4 @@
+/inav.creator.user.6c31787
 *.o
 .DS_Store
 *~
@@ -10,10 +11,9 @@
 .cproject
 obj/
 patches/
-startup_stm32f10x_md_gcc.s
 .vagrant/
+*.user.*
 
 # script-generated files
 docs/Manual.pdf
 README.pdf
-
