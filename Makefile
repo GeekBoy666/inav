@@ -16,7 +16,7 @@
 #
 
 # The target to build, see VALID_TARGETS below
-TARGET    ?= NAZE
+TARGET    ?= NUCLEOF7
 
 # Compile-time options
 OPTIONS   ?=
@@ -25,7 +25,7 @@ OPTIONS   ?=
 OPBL      ?= no
 
 # Debugger optons, must be empty or GDB
-DEBUG     ?=
+DEBUG     ?= GDB
 
 # Insert the debugging hardfault debugger
 # releases should not be built with this flag as it does not disable pwm output
@@ -88,14 +88,14 @@ ifeq ($(filter $(TARGET),$(VALID_TARGETS)),)
 $(error Target '$(TARGET)' is not valid, must be one of $(VALID_TARGETS). Have you prepared a valid target.mk?)
 endif
 
-ifeq ($(filter $(TARGET),$(F1_TARGETS) $(F3_TARGETS) $(F4_TARGETS)),)
+ifeq ($(filter $(TARGET),$(F1_TARGETS) $(F3_TARGETS) $(F4_TARGETS) $(F7_TARGETS)),)
 $(error Target '$(TARGET)' has not specified a valid STM group, must be one of F1, F3, F405, or F411. Have you prepared a valid target.mk?)
 endif
 
 128K_TARGETS  = $(F1_TARGETS)
 256K_TARGETS  = $(F3_TARGETS)
 512K_TARGETS  = $(F411_TARGETS)
-1024K_TARGETS = $(F405_TARGETS)
+1024K_TARGETS = $(F405_TARGETS) $(F7_TARGETS)
 
 # Configure default flash sizes for the targets (largest size specified gets hit first) if flash not specified already.
 ifeq ($(FLASH_SIZE),)
@@ -275,6 +275,67 @@ DEVICE_FLAGS    += -DHSE_VALUE=$(HSE_VALUE)
 
 TARGET_FLAGS = -D$(TARGET)
 # End F4 targets
+#
+# Start F7 targets
+else ifeq ($(TARGET),$(filter $(TARGET), $(F7_TARGETS)))
+
+#STDPERIPH
+STDPERIPH_DIR  = $(ROOT)/lib/main/STM32F7xx_HAL_Driver
+STDPERIPH_SRC  = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*.c))
+EXCLUDES       = $(notdir $(wildcard $(STDPERIPH_DIR)/src/*_template.c))
+STDPERIPH_SRC := $(filter-out ${EXCLUDES}, $(STDPERIPH_SRC))
+
+#USB
+USBCORE_DIR = $(ROOT)/Middlewares/ST/STM32_USB_Device_Library/Core
+USBCORE_SRC = $(notdir $(wildcard $(USBCORE_DIR)/Src/*.c))
+EXCLUDES    = usbd_conf_template.c
+USBCORE_SRC := $(filter-out ${EXCLUDES}, $(USBCORE_SRC))
+
+USBCDC_DIR = $(ROOT)/Middlewares/ST/STM32_USB_Device_Library/Class/CDC
+USBCDC_SRC = $(notdir $(wildcard $(USBCDC_DIR)/Src/*.c))
+EXCLUDES   = usbd_cdc_if_template.c
+USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
+
+VPATH := $(VPATH):$(USBCDC_DIR)/Src:$(USBCORE_DIR)/Src
+
+DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
+                        $(USBCORE_SRC) \
+                        $(USBCDC_SRC)
+
+#CMSIS
+VPATH     := $(VPATH):$(CMSIS_DIR)/CM7/CoreSupport:$(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx
+CMSIS_SRC  = $(notdir $(wildcard $(CMSIS_DIR)/CM7/CoreSupport/*.c \
+             $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/*.c))
+
+INCLUDE_DIRS   := $(INCLUDE_DIRS) \
+                  $(STDPERIPH_DIR)/inc \
+                  $(CMSIS_DIR)/CM7/CoreSupport \
+                  $(CMSIS_DIR)/CM7/DeviceSupport/ST/STM32F7xx/Include \
+                  $(USBCORE_DIR)/Inc \
+                  $(USBCDC_DIR)/Inc \
+                  $(ROOT)/src/main/vcp_hal
+
+ifneq ($(filter SDCARD,$(FEATURES)),)
+INCLUDE_DIRS    := $(INCLUDE_DIRS) \
+                   $(FATFS_DIR)
+VPATH           := $(VPATH):$(FATFS_DIR)
+endif
+
+#Flags
+ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
+DEVICE_FLAGS    = -DUSE_HAL_DRIVER -DHSE_VALUE=8000000
+ifeq ($(TARGET),MODULOF7)
+DEVICE_FLAGS   += -DSTM32F745xx
+LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
+else ifeq ($(TARGET),NUCLEOF7)
+DEVICE_FLAGS   += -DSTM32F767xx
+LD_SCRIPT       = $(LINKER_DIR)/STM32F767ZITx_FLASH.ld
+else
+$(error Unknown F7 target)
+endif
+
+TARGET_FLAGS = -D$(TARGET)
+# End F7 targets
 #
 # Start F1 targets
 else
@@ -466,6 +527,12 @@ VCP_SRC = \
             vcpf4/usbd_usr.c \
             vcpf4/usbd_cdc_vcp.c \
             drivers/serial_usb_vcp.c
+else ifeq ($(TARGET),$(filter $(TARGET),$(F7_TARGETS)))
+VCP_SRC = \
+            vcp_hal/usbd_desc.c \
+            vcp_hal/usbd_conf.c \
+            vcp_hal/usbd_cdc_interface.c \
+            drivers/serial_usb_vcp_hal.c
 else
 VCP_SRC = \
             vcp/hw_config.c \
@@ -515,10 +582,33 @@ STM32F4xx_COMMON_SRC = \
             drivers/system_stm32f4xx.c \
             drivers/timer_stm32f4xx.c \
             drivers/dma_stm32f4xx.c
+            
+STM32F7xx_COMMON_SRC =  \
+            startup_stm32f767xx.s \
+            target/stm32f7xx_hal_compat.c \
+            drivers/system_stm32f7xx.c \
+            drivers/adc_stm32f7xx.c \
+            drivers/bus_i2c_hal.c \
+            drivers/bus_spi_hal.c \
+            drivers/gpio_stm32f7xx.c \
+            drivers/inverter.c \
+            drivers/pwm_output_hal.c \
+            drivers/serial_uart_hal.c \
+            drivers/timer_hal.c
+            
 
 # check if target.mk supplied
 ifeq ($(TARGET),$(filter $(TARGET),$(F4_TARGETS)))
 TARGET_SRC := $(STM32F4xx_COMMON_SRC) $(TARGET_SRC)
+else ifeq ($(TARGET),$(filter $(TARGET),$(F7_TARGETS)))
+EXCLUDES =  drivers/bus_spi.c \
+            drivers/pwm_output.c \
+            drivers/serial_uart.c \
+            drivers/timer.c
+COMMON_SRC   := $(filter-out ${EXCLUDES}, $(COMMON_SRC))
+    
+USBCDC_SRC := $(filter-out ${EXCLUDES}, $(USBCDC_SRC))
+TARGET_SRC := $(STM32F7xx_COMMON_SRC) $(TARGET_SRC)
 else ifeq ($(TARGET),$(filter $(TARGET),$(F3_TARGETS)))
 TARGET_SRC := $(STM32F30x_COMMON_SRC) $(TARGET_SRC)
 else ifeq ($(TARGET),$(filter $(TARGET),$(F1_TARGETS)))
@@ -531,7 +621,7 @@ TARGET_SRC += \
             io/flashfs.c
 endif
 
-ifeq ($(TARGET),$(filter $(TARGET),$(F4_TARGETS) $(F3_TARGETS)))
+ifeq ($(TARGET),$(filter $(TARGET),$(F7_TARGETS) $(F4_TARGETS) $(F3_TARGETS)))
 TARGET_SRC += $(HIGHEND_SRC)
 else ifneq ($(filter HIGHEND,$(FEATURES)),)
 TARGET_SRC += $(HIGHEND_SRC)
@@ -603,7 +693,6 @@ ASFLAGS     = $(ARCH_FLAGS) \
               -MMD -MP
 
 LDFLAGS     = -lm \
-              -nostartfiles \
               --specs=nano.specs \
               -lc \
               -lnosys \

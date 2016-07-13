@@ -133,9 +133,9 @@ STATIC_UNIT_TESTED void bmp085_calculate(int32_t *pressure, int32_t *temperature
 
 void bmp085InitXCLRGpio(const bmp085Config_t *config) {
     gpio_config_t gpio;
-
+#ifndef USE_HAL_DRIVER
     RCC_APB2PeriphClockCmd(config->gpioAPB2Peripherals, ENABLE);
-
+#endif
     gpio.pin = config->xclrGpioPin;
     gpio.speed = Speed_2MHz;
     gpio.mode = Mode_Out_PP;

@@ -65,6 +65,23 @@ typedef enum
 } GPIO_Mode;
 #endif
 
+#if defined(USE_HAL_DRIVER)
+
+typedef enum
+{
+    Mode_AIN =          GPIO_MODE_ANALOG,
+    Mode_IN_FLOATING =  GPIO_MODE_INPUT,
+    Mode_IPD =          GPIO_MODE_INPUT,
+    Mode_IPU =          GPIO_MODE_INPUT,
+    Mode_Out_OD =       GPIO_MODE_OUTPUT_PP,
+    Mode_Out_PP =       GPIO_MODE_OUTPUT_PP,
+    Mode_AF_OD =        GPIO_MODE_AF_OD,
+    Mode_AF_PP =        GPIO_MODE_AF_PP,
+    Mode_AF_PP_PD =     GPIO_MODE_AF_PP,
+    Mode_AF_PP_PU =     GPIO_MODE_AF_PP
+} GPIO_Mode;
+#endif
+
 typedef enum
 {
     Speed_10MHz = 1,
@@ -98,12 +115,19 @@ typedef struct
     uint16_t pin;
     GPIO_Mode mode;
     GPIO_Speed speed;
+#if defined(USE_HAL_DRIVER)
+    uint32_t AltFunction;
+#endif
+    
 } gpio_config_t;
 
 #ifndef UNIT_TEST
-#ifdef STM32F4
-static inline void digitalHi(GPIO_TypeDef *p, uint16_t i) { p->BSRRL = i; }        
-static inline void digitalLo(GPIO_TypeDef *p, uint16_t i) { p->BSRRH = i; }        
+#if defined(USE_HAL_DRIVER)
+static inline void digitalHi(GPIO_TypeDef *p, uint16_t i) { HAL_GPIO_WritePin(p, i, GPIO_PIN_SET); }
+static inline void digitalLo(GPIO_TypeDef *p, uint16_t i) { HAL_GPIO_WritePin(p, i, GPIO_PIN_RESET); }
+#elif STM32F4
+static inline void digitalHi(GPIO_TypeDef *p, uint16_t i) { p->BSRRL = i; }
+static inline void digitalLo(GPIO_TypeDef *p, uint16_t i)     { p->BSRRH = i; }
 #else
 static inline void digitalHi(GPIO_TypeDef *p, uint16_t i) { p->BSRR = i; }
 static inline void digitalLo(GPIO_TypeDef *p, uint16_t i) { p->BRR = i; }

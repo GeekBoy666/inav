@@ -17,6 +17,20 @@
 
 #pragma once
 
+#if defined(STM32F745xx) || defined(STM32F767xx)
+#include "target/stm32f7xx_hal_compat.h"
+#include "target/portable.h"
+//#include "stm32f4xx_rcc.h"
+//#include "stm32f4xx_gpio.h"
+//#include "core_cm7.h"
+
+// Chip Unique ID on F745
+#define U_ID_0 (*(uint32_t*)0x1ff0F420)
+#define U_ID_1 (*(uint32_t*)0x1ff0F424)
+#define U_ID_2 (*(uint32_t*)0x1ff0F428)
+#define STM32F7
+#endif
+
 #if defined(STM32F40_41xxx) || defined (STM32F411xE)
 #include "stm32f4xx_conf.h"
 #include "stm32f4xx_rcc.h"

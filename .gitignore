@@ -1,4 +1,5 @@
-/inav.creator.user.6c31787
+*.creator.user.*
+/stm32f7discovery.cfg
 *.o
 .DS_Store
 *~

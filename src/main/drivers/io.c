@@ -51,6 +51,17 @@ const struct ioPortDef_s ioPortDefs[] = {
     { RCC_AHB1(GPIOE) },
     { RCC_AHB1(GPIOF) },
 };
+#elif defined(STM32F7)
+const struct ioPortDef_s ioPortDefs[] = {
+    { RCC_AHB1(GPIOA) },
+    { RCC_AHB1(GPIOB) },
+    { RCC_AHB1(GPIOC) },
+    { RCC_AHB1(GPIOD) },
+    { RCC_AHB1(GPIOE) },
+    { RCC_AHB1(GPIOF) },
+};
+#else
+#warning Unknown target
 # endif
 
 ioRec_t* IO_Rec(IO_t io)
@@ -115,7 +126,7 @@ uint32_t IO_EXTI_Line(IO_t io)
     return 1 << IO_GPIOPinIdx(io);
 #elif defined(STM32F3)
     return IO_GPIOPinIdx(io);
-#elif defined(STM32F4)
+#elif defined(STM32F4) || defined(STM32F7)
     return 1 << IO_GPIOPinIdx(io);
 #else
 # error "Unknown target type"
@@ -162,6 +173,8 @@ void IOLo(IO_t io)
         return;
 #ifdef STM32F4
     IO_GPIO(io)->BSRRH = IO_Pin(io);
+#elif USE_HAL_DRIVER
+    HAL_GPIO_WritePin(IO_GPIO(io), IO_Pin(io), false);
 #else
     IO_GPIO(io)->BRR = IO_Pin(io);
 #endif
@@ -270,6 +283,37 @@ void IOConfigGPIOAF(IO_t io, ioConfig_t cfg, uint8_t af)
     };
     GPIO_Init(IO_GPIO(io), &init);
 }
+
+#elif defined(USE_HAL_DRIVER)
+
+void IOConfigGPIO(IO_t io, ioConfig_t cfg)
+{
+    IOConfigGPIOAF(io, cfg, 0xFF);
+}
+
+void IOConfigGPIOAF(IO_t io, ioConfig_t cfg, uint8_t af)
+{
+    if (!io)
+        return;
+
+    rccPeriphTag_t rcc = ioPortDefs[IO_GPIOPortIdx(io)].rcc;
+    RCC_ClockCmd(rcc, ENABLE);
+
+    GPIO_InitTypeDef init = {
+        .Pin = IO_Pin(io),
+        .Mode = ((cfg >> 0) & 0x03) | (cfg & 0x10),
+        .Speed = (cfg >> 2) & 0x03,
+        .Pull = (cfg >> 5) & 0x03,
+        .Alternate = af,
+    };
+    GPIO_TypeDef* port = IO_GPIO(io);
+    HAL_GPIO_Init(IO_GPIO(io), &init);
+}
+
+#else
+
+#warning Unknown target
+
 #endif
 
 static const uint16_t ioDefUsedMask[DEFIO_PORT_USED_COUNT] = { DEFIO_PORT_USED_LIST };

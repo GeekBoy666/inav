@@ -17,9 +17,43 @@
 
 #pragma once
 
+#ifdef USE_HAL_DRIVER
+
+#ifndef SPI_DEFAULT_TIMEOUT
+#define SPI_DEFAULT_TIMEOUT (1000)
+#endif
+
+typedef enum{
+    LOW_SPEED_SPI = 0,
+    MEDIUM_SPEED_SPI,
+    HIGH_SPEED_SPI,
+    MAX_SPEED_SPI = HIGH_SPEED_SPI
+} SpiSpeed_t;
+
+#define SPI_9MHZ_CLOCK_DIVIDER MEDIUM_SPEED_SPI
+
+typedef enum {
+    SPIDEV_1,
+    SPIDEV_2,
+    SPIDEV_3,
+    SPIDEV_MAX = SPIDEV_3,
+} SPIDevice;
+
+bool spiInit(SPIDevice instance);
+void spiSetDivisor(SPIDevice instance, SpiSpeed_t speed);
+uint8_t spiTransferByte(SPIDevice instance, uint8_t in);
+
+bool spiTransfer(SPIDevice instance, uint8_t *out, const uint8_t *in, int len);
+
+uint16_t spiGetErrorCounter(SPIDevice instance);
+void spiResetErrorCounter(SPIDevice instance);
+
+#else
+
 #define SPI_0_5625MHZ_CLOCK_DIVIDER 128
 #define SPI_18MHZ_CLOCK_DIVIDER     2
 #define SPI_9MHZ_CLOCK_DIVIDER      4
+
 
 bool spiInit(SPI_TypeDef *instance);
 void spiSetDivisor(SPI_TypeDef *instance, uint16_t divisor);
@@ -29,3 +63,4 @@ bool spiTransfer(SPI_TypeDef *instance, uint8_t *out, const uint8_t *in, int len
 
 uint16_t spiGetErrorCounter(SPI_TypeDef *instance);
 void spiResetErrorCounter(SPI_TypeDef *instance);
+#endif

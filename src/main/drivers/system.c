@@ -106,15 +106,23 @@ uint32_t cachedRccCsrValue;
 
 static void cycleCounterInit(void)
 {
+#ifdef USE_HAL_DRIVER
+    usTicks = HAL_RCC_GetSysClockFreq() / 1000000;
+#else
     RCC_ClocksTypeDef clocks;
     RCC_GetClocksFreq(&clocks);
     usTicks = clocks.SYSCLK_Frequency / 1000000;
+#endif
 }
 
 // SysTick
 void SysTick_Handler(void)
 {
     sysTickUptime++;
+#ifdef USE_HAL_DRIVER
+    // used by the HAL for some timekeeping and timeouts, should always be 1ms
+    HAL_IncTick();
+#endif
 }
 
 // Return system uptime in microseconds (rollover in 70minutes)
@@ -142,6 +150,76 @@ uint32_t millis(void)
 
 void systemInit(void)
 {
+
+    
+#ifdef USE_HAL_DRIVER
+    // Priority grouping should be setup before any irq prio is set.
+    HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITY_GROUPING);
+   
+    
+    // GPIO ports are always used so it makes sense to just enable the clocks to the available ports
+    #ifdef GPIOA
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+    #endif    
+    #ifdef GPIOB
+        __HAL_RCC_GPIOB_CLK_ENABLE();
+    #endif
+    #ifdef GPIOC
+        __HAL_RCC_GPIOC_CLK_ENABLE();
+    #endif
+    #ifdef GPIOD
+        __HAL_RCC_GPIOD_CLK_ENABLE();
+    #endif
+    #ifdef GPIOE
+        __HAL_RCC_GPIOE_CLK_ENABLE();
+    #endif
+    #ifdef GPIOF
+        __HAL_RCC_GPIOF_CLK_ENABLE();
+    #endif
+        
+    // It makes it all lot easier if we just enable to DMA clocks, the additional idle current is neglectable
+    #ifdef DMA1
+        __HAL_RCC_DMA1_CLK_ENABLE();
+    #endif
+    #ifdef DMA2
+        __HAL_RCC_DMA2_CLK_ENABLE();
+    #endif
+    
+    /* Select SysClk as source of USART1 clocks */
+    RCC_PeriphCLKInitTypeDef RCC_PeriphClkInit;
+    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1;
+    RCC_PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_SYSCLK;
+    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
+        
+    // Init clocks of used peripherals        
+    #ifdef USE_USART1
+    __HAL_RCC_USART1_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART2
+    __HAL_RCC_USART2_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART3
+    __HAL_RCC_USART3_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART4
+    __HAL_RCC_UART4_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART5
+    __HAL_RCC_UART5_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART6
+    __HAL_RCC_USART6_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART7
+    __HAL_RCC_UART7_CLK_ENABLE();
+    #endif
+    #ifdef USE_USART8
+    __HAL_RCC_UART8_CLK_ENABLE();
+    #endif
+    
+
+
+#else
 #ifdef CC3D
     /* Accounts for OP Bootloader, set the Vector Table base address as specified in .ld file */
     extern void *isr_vector_table_base;
@@ -176,6 +254,8 @@ void systemInit(void)
     // Turn off JTAG port 'cause we're using the GPIO for leds
 #define AFIO_MAPR_SWJ_CFG_NO_JTAG_SW            (0x2 << 24)
     AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_NO_JTAG_SW;
+#endif // USE_HAL_DRIVER
+    
 #endif
 
     // Init cycle counter

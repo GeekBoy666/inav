@@ -28,7 +28,8 @@
 
 static volatile uint16_t spi1ErrorCount = 0;
 static volatile uint16_t spi2ErrorCount = 0;
-#ifdef STM32F303xC
+#if defined(STM32F303xC) || defined(STMF7) || defined(STMF4)
+#define HAS_SPI3
 static volatile uint16_t spi3ErrorCount = 0;
 #endif
 
@@ -248,7 +249,7 @@ void initSpi2(void)
 
 bool spiInit(SPI_TypeDef *instance)
 {
-#if (!(defined(USE_SPI_DEVICE_1) && defined(USE_SPI_DEVICE_2)))
+#if (!(defined(USE_SPI_DEVICE_1) && defined(USE_SPI_DEVICE_2) && defined(USE_SPI_DEVICE_3)))
     UNUSED(instance);
 #endif
 
@@ -261,6 +262,12 @@ bool spiInit(SPI_TypeDef *instance)
 #ifdef USE_SPI_DEVICE_2
     if (instance == SPI2) {
         initSpi2();
+        return true;
+    }
+#endif
+#ifdef USE_SPI_DEVICE_3
+    if (instance == SPI3) {
+        initSpi3();
         return true;
     }
 #endif
@@ -309,7 +316,7 @@ uint8_t spiTransferByte(SPI_TypeDef *instance, uint8_t data)
 #ifdef STM32F10X
     return ((uint8_t)SPI_I2S_ReceiveData(instance));
 #endif
-}
+    }
 
 bool spiTransfer(SPI_TypeDef *instance, uint8_t *out, const uint8_t *in, int len)
 {
@@ -412,7 +419,12 @@ uint16_t spiGetErrorCounter(SPI_TypeDef *instance)
         return spi1ErrorCount;
     } else if (instance == SPI2) {
         return spi2ErrorCount;
+    } 
+#ifdef HAS_SPI3
+    else if (instance == SPI3) {
+        return spi3ErrorCount;
     }
+#endif
     return 0;
 }
 
@@ -422,6 +434,11 @@ void spiResetErrorCounter(SPI_TypeDef *instance)
         spi1ErrorCount = 0;
     } else if (instance == SPI2) {
         spi2ErrorCount = 0;
+    } 
+#ifdef HAS_SPI3
+    else if (instance == SPI3) {
+        spi3ErrorCount = 0;
     }
+#endif
 }
 

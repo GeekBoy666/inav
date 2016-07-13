@@ -160,6 +160,10 @@ void flashLedsAndBeep(void)
 
 void init(void)
 {
+#ifdef USE_HAL_DRIVER
+    HAL_Init();
+
+#endif
     printfSupportInit();
 
     initEEPROM();
@@ -323,8 +327,16 @@ void init(void)
 
 
 #ifdef USE_SPI
+#ifdef USE_HAL_DRIVER
+    spiInit(SPIDEV_1);
+    spiInit(SPIDEV_2);
+    spiInit(SPIDEV_3);
+#else
     spiInit(SPI1);
     spiInit(SPI2);
+    spiInit(SPI3);
+#endif
+
 #endif
 
 #ifdef USE_HARDWARE_REVISION_DETECTION
@@ -471,7 +483,7 @@ void init(void)
     ledStripInit(masterConfig.ledConfigs, masterConfig.colors);
 
     if (feature(FEATURE_LED_STRIP)) {
-        ledStripEnable();
+            ledStripEnable();
     }
 #endif
 

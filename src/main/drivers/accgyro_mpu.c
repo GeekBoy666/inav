@@ -242,6 +242,8 @@ void configureMPUDataReadyInterruptHandling(void)
 
     EXTI_ClearITPendingBit(mpuIntExtiConfig->exti_line);
 
+    /// TODO: HAL implement EXTI
+#ifndef USE_HAL_DRIVER
     EXTI_InitTypeDef EXTIInit;
     EXTIInit.EXTI_Line = mpuIntExtiConfig->exti_line;
     EXTIInit.EXTI_Mode = EXTI_Mode_Interrupt;
@@ -256,6 +258,7 @@ void configureMPUDataReadyInterruptHandling(void)
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = NVIC_PRIORITY_SUB(NVIC_PRIO_MPU_DATA_READY);
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
+#endif
 #endif
 }
 

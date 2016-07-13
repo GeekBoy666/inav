@@ -1585,8 +1585,8 @@ static bool processInCommand(void)
 
 #ifdef USE_SERIAL_4WAY_BLHELI_INTERFACE
     case MSP_SET_4WAY_IF:
-        // switch all motor lines HI
-        // reply the count of ESC found
+        // get channel number
+        // we do not give any data back, assume channel number is transmitted OK
         headSerialReply(1);
         serialize8(esc4wayInit());
         // because we do not come back after calling Process4WayInterface
