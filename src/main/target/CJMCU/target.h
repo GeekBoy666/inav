@@ -22,20 +22,9 @@
 
 #define BRUSHED_MOTORS
 
-#define LED0
-#define LED0_GPIO GPIOC
-#define LED0_PIN Pin_14 // PC14 (LED)
-#define LED0_PERIPHERAL RCC_APB2Periph_GPIOC
-
-#define LED1
-#define LED1_GPIO GPIOC
-#define LED1_PIN Pin_13 // PC13 (LED)
-#define LED1_PERIPHERAL RCC_APB2Periph_GPIOC
-
-#define LED2
-#define LED2_GPIO GPIOC
-#define LED2_PIN Pin_15 // PC15 (LED)
-#define LED2_PERIPHERAL RCC_APB2Periph_GPIOC
+#define LED0                PC14
+#define LED1                PC13
+#define LED2                PC15
 
 #undef BEEPER
 
@@ -108,8 +97,4 @@
 #define TARGET_IO_PORTB 0xffff
 #define TARGET_IO_PORTC (BIT(13)|BIT(14)|BIT(15))
 
-#define USED_TIMERS         (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4))
-
-#define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4)
-#define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM1 | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB)
-
+#define USED_TIMERS     (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4))

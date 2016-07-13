@@ -171,6 +171,19 @@ const extiConfig_t *selectMPUIntExtiConfig(void)
     return &colibriRaceMPUIntExtiConfig;
 #endif
 
+#if defined(FURYF3)
+    static const extiConfig_t FURYF3MPUIntExtiConfig = {
+            .gpioAHBPeripherals = RCC_AHBPeriph_GPIOA,
+            .gpioPort = GPIOA,
+            .gpioPin = Pin_3,
+            .exti_port_source = EXTI_PortSourceGPIOA,
+            .exti_pin_source = EXTI_PinSource3,
+            .exti_line = EXTI_Line3,
+            .exti_irqn = EXTI3_IRQn
+    };
+    return &FURYF3MPUIntExtiConfig;
+#endif
+
     return NULL;
 }
 
@@ -721,8 +734,8 @@ retry:
 
     if (magHardware == MAG_NONE && magHardwareToUse != MAG_DEFAULT && magHardwareToUse != MAG_NONE) {
         // Nothing was found and we have a forced sensor that isn't present.
-        magHardwareToUse = MAG_DEFAULT;
-        goto retry;
+        magHardwareToUse = MAG_NONE;
+        return;
     }
 
     if (magHardware == MAG_NONE) {

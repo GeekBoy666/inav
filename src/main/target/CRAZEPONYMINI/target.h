@@ -19,21 +19,10 @@
 
 #define TARGET_BOARD_IDENTIFIER "CPM1" // CrazePony MINI
 
-#define LED0
-#define LED0_GPIO       GPIOA
-#define LED0_PIN        Pin_11 // PA11 (M1 LED)
-#define LED0_PERIPHERAL RCC_APB2Periph_GPIOA
 
-#define LED1
-#define LED1_GPIO       GPIOA
-#define LED1_PIN        Pin_8 // PA8  (M2 LED)
-#define LED1_PERIPHERAL RCC_APB2Periph_GPIOA
-
-#define LED2
-#define LED2_GPIO       GPIOB
-#define LED2_PIN        (Pin_1 | Pin_3) // PB1  (M3+M4 LED)
-#define LED2_PERIPHERAL RCC_APB2Periph_GPIOB
-
+#define LED0                PA11
+#define LED1                PA8
+#define LED2                PB1
 
 #define ACC
 #define USE_ACC_MPU6050
@@ -49,8 +38,7 @@
 
 #define BRUSHED_MOTORS
 
-#define USE_UART1
-
+#define USE_USART1
 #define SERIAL_PORT_COUNT 1
 
 #define USE_ADC
@@ -103,6 +91,10 @@
 #define SKIP_CLI_COMMAND_HELP
 #endif
 
+
+// IO - assuming all IOs on 48pin package TODO
+#define TARGET_IO_PORTA 0xffff
+#define TARGET_IO_PORTB 0xffff
 
 #define USED_TIMERS         TIM_N(2)
 

@@ -115,7 +115,7 @@ typedef struct navConfig_s {
 
     uint8_t  mc_max_bank_angle;             // multicopter max banking angle (deg)
     uint16_t mc_hover_throttle;             // multicopter hover throttle
-    uint16_t mc_min_fly_throttle;           // multicopter minimum throttle to consider machine flying
+    uint16_t mc_auto_disarm_delay;          // multicopter safety delay for landing detector
 
     uint16_t fw_cruise_throttle;            // Cruise throttle
     uint16_t fw_min_throttle;               // Minimum allowed throttle in auto mode
@@ -267,7 +267,6 @@ rthState_e getStateOfForcedRTH(void);
 /* Compatibility data */
 extern navSystemStatus_t    NAV_Status;
 
-#if defined(BLACKBOX)
 extern int16_t navCurrentState;
 extern int16_t navActualVelocity[3];
 extern int16_t navDesiredVelocity[3];
@@ -277,6 +276,7 @@ extern int16_t navTargetSurface;
 extern int16_t navActualSurface;
 extern int16_t navDebug[4];
 extern uint16_t navFlags;
+#if defined(BLACKBOX)
 #define NAV_BLACKBOX_DEBUG(x,y) navDebug[x] = constrain((y), -32678, 32767)
 #else
 #define NAV_BLACKBOX_DEBUG(x,y)

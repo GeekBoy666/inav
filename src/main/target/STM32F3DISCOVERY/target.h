@@ -19,22 +19,12 @@
 
 #define TARGET_BOARD_IDENTIFIER "SDF3" // STM Discovery F3
 
-#define LED0
-#define LED0_GPIO   GPIOE
-#define LED0_PIN    Pin_8|Pin_12 // Blue LEDs - PE8/PE12
-#define LED0_PERIPHERAL RCC_AHBPeriph_GPIOE
+#define LED0                PE8 // Blue LEDs - PE8/PE12
 #define LED0_INVERTED
-
-#define LED1
-#define LED1_GPIO   GPIOE
-#define LED1_PIN    Pin_10|Pin_14  // Orange LEDs - PE10/PE14
-#define LED1_PERIPHERAL RCC_AHBPeriph_GPIOE
+#define LED1                PE10  // Orange LEDs - PE10/PE14
 #define LED1_INVERTED
 
-#define BEEPER
-#define BEEP_GPIO   GPIOE
-#define BEEP_PIN    Pin_9|Pin_13 // Red LEDs - PE9/PE13
-#define BEEP_PERIPHERAL RCC_AHBPeriph_GPIOE
+#define BEEPER      PE9 // Red LEDs - PE9/PE13
 #define BEEPER_INVERTED
 
 #define USE_SPI
@@ -89,7 +79,6 @@
 #define LED_STRIP
 #define LED_STRIP_TIMER TIM16
 
-
 #define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
 // IO - 303 in 100pin package
@@ -102,8 +91,4 @@
 
 
 #define USED_TIMERS  (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(8) | TIM_N(16) | TIM_N(17))
-
-#define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4)
-#define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM1 | RCC_APB2Periph_TIM8 | RCC_APB2Periph_TIM16 | RCC_APB2Periph_TIM17)
-#define TIMER_AHB_PERIPHERALS (RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB | RCC_AHBPeriph_GPIOC | RCC_AHBPeriph_GPIOD)
 

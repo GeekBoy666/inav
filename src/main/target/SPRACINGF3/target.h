@@ -19,15 +19,9 @@
 
 #define TARGET_BOARD_IDENTIFIER "SRF3"
 
-#define LED0
-#define LED0_GPIO   GPIOB
-#define LED0_PIN    Pin_3
-#define LED0_PERIPHERAL RCC_AHBPeriph_GPIOB
+#define LED0                PB3
 
-#define BEEPER
-#define BEEP_GPIO   GPIOC
-#define BEEP_PIN    Pin_15
-#define BEEP_PERIPHERAL RCC_AHBPeriph_GPIOC
+#define BEEPER              PC15
 #define BEEPER_INVERTED
 
 #define USABLE_TIMER_CHANNEL_COUNT 17
@@ -183,9 +177,6 @@
 #define TARGET_IO_PORTC (BIT(13)|BIT(14)|BIT(15))
 #define TARGET_IO_PORTF (BIT(0)|BIT(1)|BIT(3)|BIT(4))
 
-#define USED_TIMERS  (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(15) | TIM_N(16) |TIM_N(17))
+#define USED_TIMERS  ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(15) | TIM_N(16) | TIM_N(17) )
 
-#define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4)
-#define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM1 | RCC_APB2Periph_TIM15 | RCC_APB2Periph_TIM16 | RCC_APB2Periph_TIM17)
-#define TIMER_AHB_PERIPHERALS (RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB)
 

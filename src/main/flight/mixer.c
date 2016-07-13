@@ -84,7 +84,7 @@ static uint8_t minServoIndex;
 static uint8_t maxServoIndex;
 
 static servoParam_t *servoConf;
-static biquad_t servoFitlerState[MAX_SUPPORTED_SERVOS];
+static biquadFilter_t servoFitlerState[MAX_SUPPORTED_SERVOS];
 static bool servoFilterIsSet;
 #endif
 
@@ -764,7 +764,7 @@ void mixTable(void)
             }
 
             // Motor stop handling
-            if (feature(FEATURE_MOTOR_STOP) && ARMING_FLAG(ARMED) && !feature(FEATURE_3D) && !IS_RC_MODE_ACTIVE(BOXAIRMODE)) {
+            if (feature(FEATURE_MOTOR_STOP) && ARMING_FLAG(ARMED) && !feature(FEATURE_3D)) {
                 if (((rcData[THROTTLE]) < rxConfig->mincheck)) {
                     motor[i] = escAndServoConfig->mincommand;
                 }
@@ -889,7 +889,7 @@ void filterServos(void)
         // Initialize servo lowpass filter (servos are calculated at looptime rate)
         if (!servoFilterIsSet) {
             for (servoIdx = 0; servoIdx < MAX_SUPPORTED_SERVOS; servoIdx++) {
-                filterInitBiQuad(mixerConfig->servo_lowpass_freq, &servoFitlerState[servoIdx], 0);
+                biquadFilterInit(&servoFitlerState[servoIdx], mixerConfig->servo_lowpass_freq, 0);
             }
 
             servoFilterIsSet = true;
@@ -897,7 +897,7 @@ void filterServos(void)
 
         for (servoIdx = 0; servoIdx < MAX_SUPPORTED_SERVOS; servoIdx++) {
             // Apply servo lowpass filter and do sanity cheching
-            servo[servoIdx] = (int16_t) filterApplyBiQuad((float)servo[servoIdx], &servoFitlerState[servoIdx]);
+            servo[servoIdx] = (int16_t) biquadFilterApply(&servoFitlerState[servoIdx], (float)servo[servoIdx]);
         }
     }
 

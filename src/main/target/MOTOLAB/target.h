@@ -19,19 +19,10 @@
 
 #define TARGET_BOARD_IDENTIFIER "MOTO" // MotoLab
 
-#define LED0
-#define LED0_GPIO   GPIOB
-#define LED0_PIN    Pin_5 // Blue LEDs - PB5
-#define LED0_PERIPHERAL RCC_AHBPeriph_GPIOB
+#define LED0                PB5 // Blue LEDs - PB5
+#define LED1                PB9 // Green LEDs - PB9
 
-#define LED1_GPIO   GPIOB
-#define LED1_PIN    Pin_9  // Green LEDs - PB9
-#define LED1_PERIPHERAL RCC_AHBPeriph_GPIOB
-
-#define BEEPER
-#define BEEP_GPIO   GPIOA
-#define BEEP_PIN    Pin_0
-#define BEEP_PERIPHERAL RCC_AHBPeriph_GPIOA
+#define BEEPER              PA0
 #define BEEPER_INVERTED
 
 #define USABLE_TIMER_CHANNEL_COUNT 9
@@ -49,7 +40,7 @@
 #define ACC
 #define USE_ACC_MPU6050
 
-#define ACC_MPU6050_ALIGN CW180_DEG
+#define ACC_MPU6050_ALIGN   CW180_DEG
 
 //#define BARO
 //#define USE_BARO_MS5611
@@ -189,9 +180,5 @@
 // !!TODO - check the following line is correct
 #define TARGET_IO_PORTF (BIT(0)|BIT(1)|BIT(3)|BIT(4))
 
-#define USED_TIMERS  (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(15) | TIM_N(17))
-
-#define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM1 | RCC_APB2Periph_TIM15 | RCC_APB2Periph_TIM17)
-#define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3)
-#define TIMER_AHB_PERIPHERALS (RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB)
+#define USED_TIMERS     (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(15) | TIM_N(17))
 

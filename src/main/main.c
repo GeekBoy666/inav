@@ -17,12 +17,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "platform.h"
-
-#include "scheduler/scheduler.h"
 
 #include "common/axis.h"
 #include "common/color.h"
@@ -63,6 +60,8 @@
 #include "io/gimbal.h"
 #include "io/ledstrip.h"
 #include "io/display.h"
+
+#include "scheduler/scheduler.h"
 
 #include "sensors/sensors.h"
 #include "sensors/barometer.h"
@@ -150,8 +149,8 @@ void flashLedsAndBeep(void)
         LED1_TOGGLE;
         LED0_TOGGLE;
         delay(25);
-    	if (!(getPreferedBeeperOffMask() & (1 << (BEEPER_SYSTEM_INIT - 1))))
-        	BEEP_ON;
+        if (!(getPreferedBeeperOffMask() & (1 << (BEEPER_SYSTEM_INIT - 1))))
+            BEEP_ON;
         delay(25);
         BEEP_OFF;
     }
@@ -169,6 +168,9 @@ void init(void)
     readEEPROM();
 
     systemState |= SYSTEM_STATE_CONFIG_LOADED;
+
+    // initialize IO (needed for all IO operations)
+    IOInitGlobal();
 
 #ifdef STM32F303
     // start fpu
@@ -194,7 +196,11 @@ void init(void)
     // Latch active features to be used for feature() in the remainder of init().
     latchActiveFeatures();
 
-    ledInit();
+#ifdef ALIENFLIGHTF3
+    ledInit(hardwareRevision == AFF3_REV_1 ? false : true);
+#else
+    ledInit(false);
+#endif
 
 #ifdef SPEKTRUM_BIND
     if (feature(FEATURE_RX_SERIAL)) {
@@ -291,21 +297,19 @@ void init(void)
 
 #ifdef BEEPER
     beeperConfig_t beeperConfig = {
-        .gpioPeripheral = BEEP_PERIPHERAL,
-        .gpioPin = BEEP_PIN,
-        .gpioPort = BEEP_GPIO,
+        .ioTag = IO_TAG(BEEPER),
 #ifdef BEEPER_INVERTED
-        .gpioMode = Mode_Out_PP,
+        .isOD = false,
         .isInverted = true
 #else
-        .gpioMode = Mode_Out_OD,
+        .isOD = true,
         .isInverted = false
 #endif
     };
 #ifdef NAZE
     if (hardwareRevision >= NAZE32_REV5) {
         // naze rev4 and below used opendrain to PNP for buzzer. Rev5 and above use PP to NPN.
-        beeperConfig.gpioMode = Mode_Out_PP;
+        beeperConfig.isOD = false;
         beeperConfig.isInverted = true;
     }
 #endif
@@ -341,6 +345,11 @@ void init(void)
     }
 #endif
 
+#if defined(FURYF3) && defined(SONAR) && defined(USE_SOFTSERIAL1)
+    if (feature(FEATURE_SONAR) && feature(FEATURE_SOFTSERIAL)) {
+        serialRemovePort(SERIAL_PORT_SOFTSERIAL1);
+    }
+#endif
 
 #ifdef USE_I2C
 #if defined(NAZE)
@@ -395,8 +404,12 @@ void init(void)
     // Set gyro sampling rate divider before initialization
     gyroSetSampleRate(masterConfig.looptime, masterConfig.gyro_lpf, masterConfig.gyroSync, masterConfig.gyroSyncDenominator);
 
-    if (!sensorsAutodetect(&masterConfig.sensorAlignmentConfig, masterConfig.gyro_lpf,
-        masterConfig.acc_hardware, masterConfig.mag_hardware, masterConfig.baro_hardware, currentProfile->mag_declination)) {
+    if (!sensorsAutodetect(&masterConfig.sensorAlignmentConfig,
+            masterConfig.gyro_lpf,
+            masterConfig.acc_hardware,
+            masterConfig.mag_hardware,
+            masterConfig.baro_hardware,
+            currentProfile->mag_declination)) {
 
         // if gyro was not detected due to whatever reason, we give up now.
         failureMode(FAILURE_MISSING_ACC);
@@ -535,7 +548,8 @@ void processLoopback(void) {
 #define processLoopback()
 #endif
 
-int main(void) {
+int main(void)
+{
     init();
 
     /* Setup scheduler */
@@ -572,7 +586,7 @@ int main(void) {
     setTaskEnabled(TASK_LEDSTRIP, feature(FEATURE_LED_STRIP));
 #endif
 
-    while (1) {
+    while (true) {
         scheduler();
         processLoopback();
     }

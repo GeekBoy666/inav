@@ -65,11 +65,11 @@ int16_t navActualHeading;
 int16_t navDesiredHeading;
 int16_t navTargetPosition[3];
 int32_t navLatestActualPosition[3];
-int16_t navDebug[4];
 int16_t navTargetSurface;
 int16_t navActualSurface;
 uint16_t navFlags;
 #endif
+int16_t navDebug[4];
 
 static void updateDesiredRTHAltitude(void);
 static void resetAltitudeController(void);
@@ -396,13 +396,14 @@ static navigationFSMStateDescriptor_t navFSM[NAV_STATE_COUNT] = {
 
     [NAV_STATE_RTH_3D_HOVER_PRIOR_TO_LANDING] = {
         .onEntry = navOnEnteringState_NAV_STATE_RTH_3D_HOVER_PRIOR_TO_LANDING,
-        .timeoutMs = 5000,
+        .timeoutMs = 500,
         .stateFlags = NAV_CTL_ALT | NAV_CTL_POS | NAV_CTL_YAW | NAV_REQUIRE_ANGLE | NAV_REQUIRE_MAGHOLD | NAV_REQUIRE_THRTILT | NAV_AUTO_RTH | NAV_RC_POS | NAV_RC_YAW,
         .mapToFlightModes = NAV_RTH_MODE | NAV_ALTHOLD_MODE,
         .mwState = MW_NAV_STATE_LAND_SETTLE,
         .mwError = MW_NAV_ERROR_NONE,
         .onEvent = {
-            [NAV_FSM_EVENT_TIMEOUT]                     = NAV_STATE_RTH_3D_LANDING,
+            [NAV_FSM_EVENT_TIMEOUT]                     = NAV_STATE_RTH_3D_HOVER_PRIOR_TO_LANDING,
+            [NAV_FSM_EVENT_SUCCESS]                     = NAV_STATE_RTH_3D_LANDING,
             [NAV_FSM_EVENT_SWITCH_TO_IDLE]              = NAV_STATE_IDLE,
             [NAV_FSM_EVENT_SWITCH_TO_ALTHOLD]           = NAV_STATE_ALTHOLD_INITIALIZE,
             [NAV_FSM_EVENT_SWITCH_TO_POSHOLD_2D]        = NAV_STATE_POSHOLD_2D_INITIALIZE,
@@ -615,9 +616,13 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_IDLE(navigationFSMState
 
 static navigationFSMEvent_t navOnEnteringState_NAV_STATE_ALTHOLD_INITIALIZE(navigationFSMState_t previousState)
 {
-    /* If previous controller was NOT executing NAV_CTL_ALT controller, we must reset altitude setpoint */
-    if ((navGetStateFlags(previousState) & NAV_CTL_ALT) == 0) {
+    navigationFSMStateFlags_t prevFlags = navGetStateFlags(previousState);
+
+    if ((prevFlags & NAV_CTL_ALT) == 0) {
         resetAltitudeController();
+    }
+
+    if (((prevFlags & NAV_CTL_ALT) == 0) || ((prevFlags & NAV_AUTO_RTH) != 0) || ((prevFlags & NAV_AUTO_WP) != 0)) {
         setupAltitudeController();
         setDesiredPosition(&posControl.actualState.pos, posControl.actualState.yaw, NAV_POS_UPDATE_Z);  // This will reset surface offset
     }
@@ -741,7 +746,7 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_RTH_2D_INITIALIZE(navig
         if (posControl.flags.hasValidPositionSensor) {
             // If close to home - reset home position
             if (posControl.homeDistance < posControl.navConfig->min_rth_distance) {
-                setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw);
+                setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_HEADING);
             }
 
             return NAV_FSM_EVENT_SUCCESS;
@@ -826,8 +831,8 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_RTH_3D_INITIALIZE(navig
         if (posControl.flags.hasValidPositionSensor) {
             // If close to home - reset home position and land
             if (posControl.homeDistance < posControl.navConfig->min_rth_distance) {
-                setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw);
-                setDesiredPosition(&posControl.actualState.pos, 0, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_Z);
+                setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_HEADING);
+                setDesiredPosition(&posControl.actualState.pos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_Z | NAV_POS_UPDATE_HEADING);
 
                 return NAV_FSM_EVENT_SWITCH_TO_RTH_3D_LANDING;   // NAV_STATE_RTH_3D_HOVER_PRIOR_TO_LANDING
             }
@@ -842,7 +847,7 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_RTH_3D_INITIALIZE(navig
                     calculateFarAwayTarget(&targetHoldPos, posControl.actualState.yaw, 100000.0f);  // 1km away
                 }
 
-                setDesiredPosition(&targetHoldPos, 0, NAV_POS_UPDATE_XY);
+                setDesiredPosition(&targetHoldPos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_HEADING);
 
                 return NAV_FSM_EVENT_SUCCESS;   // NAV_STATE_RTH_3D_CLIMB_TO_SAFE_ALT
             }
@@ -929,9 +934,15 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_RTH_3D_HOVER_PRIOR_TO_L
         return NAV_FSM_EVENT_SWITCH_TO_EMERGENCY_LANDING;
     }
 
-    resetLandingDetector();
-
-    return NAV_FSM_EVENT_NONE;
+    // Wait until target heading is reached (with 15 deg margin for error)
+    if (ABS(wrap_18000(posControl.homeWaypointAbove.yaw - posControl.actualState.yaw)) < DEGREES_TO_CENTIDEGREES(15)) {
+        resetLandingDetector();
+        return NAV_FSM_EVENT_SUCCESS;
+    }
+    else {
+        setDesiredPosition(&posControl.homeWaypointAbove.pos, posControl.homeWaypointAbove.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_Z | NAV_POS_UPDATE_HEADING);
+        return NAV_FSM_EVENT_NONE;
+    }
 }
 
 static navigationFSMEvent_t navOnEnteringState_NAV_STATE_RTH_3D_LANDING(navigationFSMState_t previousState)
@@ -1229,7 +1240,7 @@ float navPidApply2(float setpoint, float measurement, float dt, pidController_t 
         pid->last_input = measurement;
     }
 
-    newDerivative = pid->param.kD * filterApplyPt1(newDerivative, &pid->dterm_filter_state, NAV_DTERM_CUT_HZ, dt);
+    newDerivative = pid->param.kD * pt1FilterApply4(&pid->dterm_filter_state, newDerivative, NAV_DTERM_CUT_HZ, dt);
 
     /* Pre-calculate output and limit it if actuator is saturating */
     float outVal = newProportional + pid->integrator + newDerivative;
@@ -1314,16 +1325,17 @@ void updateActualHorizontalPositionAndVelocity(bool hasValidSensor, float newX, 
 
     posControl.actualState.vel.V.X = newVelX;
     posControl.actualState.vel.V.Y = newVelY;
+    posControl.actualState.velXY = sqrtf(sq(newVelX) + sq(newVelY));
 
     posControl.flags.hasValidPositionSensor = hasValidSensor;
     posControl.flags.hasValidHeadingSensor = isImuHeadingValid();
 
     if (hasValidSensor) {
-        posControl.flags.horizontalPositionNewData = 1;
+        posControl.flags.horizontalPositionDataNew = 1;
         posControl.lastValidPositionTimeMs = millis();
     }
     else {
-        posControl.flags.horizontalPositionNewData = 0;
+        posControl.flags.horizontalPositionDataNew = 0;
     }
 
 #if defined(NAV_BLACKBOX)
@@ -1347,11 +1359,11 @@ void updateActualAltitudeAndClimbRate(bool hasValidSensor, float newAltitude, fl
     // Update altitude that would be used when executing RTH
     if (hasValidSensor) {
         updateDesiredRTHAltitude();
-        posControl.flags.verticalPositionNewData = 1;
+        posControl.flags.verticalPositionDataNew = 1;
         posControl.lastValidAltitudeTimeMs = millis();
     }
     else {
-        posControl.flags.verticalPositionNewData = 0;
+        posControl.flags.verticalPositionDataNew = 0;
     }
 
 #if defined(NAV_BLACKBOX)
@@ -1385,10 +1397,10 @@ void updateActualSurfaceDistance(bool hasValidSensor, float surfaceDistance, flo
     posControl.flags.hasValidSurfaceSensor = hasValidSensor;
 
     if (hasValidSensor) {
-        posControl.flags.surfaceDistanceNewData = 1;
+        posControl.flags.surfaceDistanceDataNew = 1;
     }
     else {
-        posControl.flags.surfaceDistanceNewData = 0;
+        posControl.flags.surfaceDistanceDataNew = 0;
     }
 
 #if defined(NAV_BLACKBOX)
@@ -1408,7 +1420,7 @@ void updateActualHeading(int32_t newHeading)
     posControl.actualState.sinYaw = sin_approx(CENTIDEGREES_TO_RADIANS(newHeading));
     posControl.actualState.cosYaw = cos_approx(CENTIDEGREES_TO_RADIANS(newHeading));
 
-    posControl.flags.headingNewData = 1;
+    posControl.flags.headingDataNew = 1;
 }
 
 /*-----------------------------------------------------------
@@ -1490,10 +1502,24 @@ static void updateDesiredRTHAltitude(void)
 /*-----------------------------------------------------------
  * Reset home position to current position
  *-----------------------------------------------------------*/
-void setHomePosition(t_fp_vector * pos, int32_t yaw)
+void setHomePosition(t_fp_vector * pos, int32_t yaw, navSetWaypointFlags_t useMask)
 {
-    posControl.homePosition.pos = *pos;
-    posControl.homePosition.yaw = yaw;
+    // XY-position
+    if ((useMask & NAV_POS_UPDATE_XY) != 0) {
+        posControl.homePosition.pos.V.X = pos->V.X;
+        posControl.homePosition.pos.V.Y = pos->V.Y;
+    }
+
+    // Z-position
+    if ((useMask & NAV_POS_UPDATE_Z) != 0) {
+        posControl.homePosition.pos.V.Z = pos->V.Z;
+    }
+
+    // Heading
+    if ((useMask & NAV_POS_UPDATE_HEADING) != 0) {
+        // Heading
+        posControl.homePosition.yaw = yaw;
+    }
 
     posControl.homeDistance = 0;
     posControl.homeDirection = 0;
@@ -1514,13 +1540,18 @@ void updateHomePosition(void)
     // Disarmed and have a valid position, constantly update home
     if (!ARMING_FLAG(ARMED)) {
         if (posControl.flags.hasValidPositionSensor) {
-            setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw);
+            setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_Z | NAV_POS_UPDATE_HEADING );
         }
     }
     else {
         // If pilot so desires he may reset home position to current position
         if (IS_RC_MODE_ACTIVE(BOXHOMERESET) && !FLIGHT_MODE(NAV_RTH_MODE) && !FLIGHT_MODE(NAV_WP_MODE) && posControl.flags.hasValidPositionSensor) {
-            setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw);
+            if (STATE(GPS_FIX_HOME)) {
+                setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_HEADING);
+            }
+            else {
+                setHomePosition(&posControl.actualState.pos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_Z | NAV_POS_UPDATE_HEADING);
+            }
         }
 
         // Update distance and direction to home if armed (home is not updated when armed)
@@ -1609,13 +1640,14 @@ void calculateFarAwayTarget(t_fp_vector * farAwayPos, int32_t yaw, int32_t dista
 /*-----------------------------------------------------------
  * NAV land detector
  *-----------------------------------------------------------*/
-static uint32_t landingTimer;
-static bool hasHadSomeVelocity;
-
 void resetLandingDetector(void)
 {
-    landingTimer = micros();
-    hasHadSomeVelocity = false;
+    if (STATE(FIXED_WING)) { // FIXED_WING
+        resetFixedWingLandingDetector();
+    }
+    else {
+        resetMulticopterLandingDetector();
+    }
 }
 
 bool isLandingDetected(void)
@@ -1623,10 +1655,10 @@ bool isLandingDetected(void)
     bool landingDetected;
 
     if (STATE(FIXED_WING)) { // FIXED_WING
-        landingDetected = isFixedWingLandingDetected(&landingTimer);
+        landingDetected = isFixedWingLandingDetected();
     }
     else {
-        landingDetected = isMulticopterLandingDetected(&landingTimer, &hasHadSomeVelocity);
+        landingDetected = isMulticopterLandingDetected();
     }
 
     return landingDetected;
@@ -1799,7 +1831,7 @@ void setWaypoint(uint8_t wpNumber, navWaypoint_t * wpData)
     if ((wpNumber == 0) && ARMING_FLAG(ARMED) && posControl.flags.hasValidPositionSensor && posControl.gpsOrigin.valid) {
         // Forcibly set home position. Note that this is only valid if already armed, otherwise home will be reset instantly
         geoConvertGeodeticToLocal(&posControl.gpsOrigin, &wpLLH, &wpPos.pos, GEO_ALT_RELATIVE);
-        setHomePosition(&wpPos.pos, 0);
+        setHomePosition(&wpPos.pos, 0, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_Z | NAV_POS_UPDATE_HEADING);
     }
     // WP #255 - special waypoint - directly set desiredPosition
     // Only valid when armed and in poshold mode
@@ -1820,7 +1852,7 @@ void setWaypoint(uint8_t wpNumber, navWaypoint_t * wpData)
             waypointUpdateFlags |= NAV_POS_UPDATE_HEADING;
         }
 
-        setDesiredPosition(&wpPos.pos, DEGREES_TO_DECIDEGREES(wpData->p1), waypointUpdateFlags);
+        setDesiredPosition(&wpPos.pos, DEGREES_TO_CENTIDEGREES(wpData->p1), waypointUpdateFlags);
     }
     // WP #1 - #15 - common waypoints - pre-programmed mission
     else if ((wpNumber >= 1) && (wpNumber <= NAV_MAX_WAYPOINTS) && !ARMING_FLAG(ARMED)) {
@@ -1977,6 +2009,10 @@ void applyWaypointNavigationAndAltitudeHold(void)
         return;
     }
 
+    /* Reset flags */
+    posControl.flags.horizontalPositionDataConsumed = 0;
+    posControl.flags.verticalPositionDataConsumed = 0;
+
     /* Process controllers */
     navigationFSMStateFlags_t navStateFlags = navGetStateFlags(posControl.navState);
     if (STATE(FIXED_WING)) {
@@ -1985,6 +2021,14 @@ void applyWaypointNavigationAndAltitudeHold(void)
     else {
         applyMulticopterNavigationController(navStateFlags, currentTime);
     }
+
+    /* Consume position data */
+    if (posControl.flags.horizontalPositionDataConsumed)
+        posControl.flags.horizontalPositionDataNew = 0;
+
+    if (posControl.flags.verticalPositionDataConsumed)
+        posControl.flags.verticalPositionDataNew = 0;
+
 
 #if defined(NAV_BLACKBOX)
     if (posControl.flags.isAdjustingPosition)       navFlags |= (1 << 5);
@@ -2094,7 +2138,8 @@ bool naivationRequiresAngleMode(void)
  */
 int8_t naivationGetHeadingControlState(void)
 {
-    if (navGetStateFlags(posControl.navState) & NAV_REQUIRE_MAGHOLD) {
+    // No explicit MAG_HOLD mode for airplanes
+    if ((navGetStateFlags(posControl.navState) & NAV_REQUIRE_MAGHOLD) && !STATE(FIXED_WING)) {
         if (posControl.flags.isAdjustingHeading) {
             return NAV_HEADING_CONTROL_MANUAL;
         }
@@ -2263,10 +2308,10 @@ void navigationInit(navConfig_t *initialnavConfig,
     /* Initial state */
     posControl.navState = NAV_STATE_IDLE;
 
-    posControl.flags.horizontalPositionNewData = 0;
-    posControl.flags.verticalPositionNewData = 0;
-    posControl.flags.surfaceDistanceNewData = 0;
-    posControl.flags.headingNewData = 0;
+    posControl.flags.horizontalPositionDataNew = 0;
+    posControl.flags.verticalPositionDataNew = 0;
+    posControl.flags.surfaceDistanceDataNew = 0;
+    posControl.flags.headingDataNew = 0;
 
     posControl.flags.hasValidAltitudeSensor = 0;
     posControl.flags.hasValidPositionSensor = 0;

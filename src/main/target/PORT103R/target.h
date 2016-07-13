@@ -19,31 +19,14 @@
 
 #define TARGET_BOARD_IDENTIFIER "103R"
 
-#define LED0
-#define LED0_GPIO   GPIOB
-#define LED0_PIN    Pin_3 // PB3 (LED)
-#define LED0_PERIPHERAL RCC_APB2Periph_GPIOB
+#define LED0                PB3
+#define LED1                PB4
+#define LED2                PD2 // Labelled LED4
 
-#define LED1
-#define LED1_GPIO   GPIOB
-#define LED1_PIN    Pin_4 // PB4 (LED)
-#define LED1_PERIPHERAL RCC_APB2Periph_GPIOB
+#define BEEPER              PA12 // PA12 (Beeper)
 
-#define LED2
-#define LED2_GPIO   GPIOD
-#define LED2_PIN    Pin_2 // PD2 (LED) - Labelled LED4
-#define LED2_PERIPHERAL RCC_APB2Periph_GPIOD
-
-#define BEEPER
-#define BEEP_GPIO   GPIOA
-#define BEEP_PIN    Pin_12 // PA12 (Beeper)
-#define BEEP_PERIPHERAL RCC_APB2Periph_GPIOA
-
-#define INVERTER
-#define INVERTER_PIN Pin_2 // PB2 (BOOT1) abused as inverter select GPIO
-#define INVERTER_GPIO GPIOB
-#define INVERTER_PERIPHERAL RCC_APB2Periph_GPIOB
-#define INVERTER_USART USART2
+#define INVERTER            PB2 // PB2 (BOOT1) abused as inverter select GPIO
+#define INVERTER_USART      USART2
 
 #define BARO_XCLR_GPIO   GPIOC
 #define BARO_XCLR_PIN    Pin_13
@@ -168,8 +151,6 @@
 #define TARGET_IO_PORTD (BIT(0)|BIT(1)|BIT(2))
 
 
-#define USED_TIMERS         (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4))
+#define USED_TIMERS     (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4))
 
-#define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4)
-#define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM1 | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB)
 

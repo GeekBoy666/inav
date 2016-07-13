@@ -69,10 +69,13 @@ typedef struct pidProfile_s {
 extern int16_t axisPID[];
 extern int32_t axisPID_P[], axisPID_I[], axisPID_D[], axisPID_Setpoint[];
 
+void pidInit(void);
 void pidResetErrorAccumulators(void);
 void updatePIDCoefficients(const pidProfile_t *pidProfile, const controlRateConfig_t *controlRateConfig, const rxConfig_t *rxConfig);
-int16_t pidAngleToRcCommand(float angleDeciDegrees);
 void pidController(const pidProfile_t *pidProfile, const controlRateConfig_t *controlRateConfig, const rxConfig_t *rxConfig);
+
+float pidRateToRcCommand(float rateDPS, uint8_t rate);
+int16_t pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination);
 
 enum {
     MAG_HOLD_DISABLED = 0,

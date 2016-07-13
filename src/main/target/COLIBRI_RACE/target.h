@@ -19,25 +19,11 @@
 
 #define TARGET_BOARD_IDENTIFIER "CLBR"
 
-#define LED0
-#define LED0_GPIO   GPIOC
-#define LED0_PIN    Pin_15
-#define LED0_PERIPHERAL RCC_AHBPeriph_GPIOC
+#define LED0                PC15
+#define LED1                PC14
+#define LED2                PC13
 
-#define LED1
-#define LED1_GPIO   GPIOC
-#define LED1_PIN    Pin_14
-#define LED1_PERIPHERAL RCC_AHBPeriph_GPIOC
-
-#define LED2
-#define LED2_GPIO   GPIOC
-#define LED2_PIN    Pin_13
-#define LED2_PERIPHERAL RCC_AHBPeriph_GPIOC
-
-#define BEEPER
-#define BEEP_GPIO   GPIOB
-#define BEEP_PIN    Pin_13
-#define BEEP_PERIPHERAL RCC_AHBPeriph_GPIOB
+#define BEEPER              PB13
 #define BEEPER_INVERTED
 
 #define MPU6500_CS_GPIO_CLK_PERIPHERAL   RCC_AHBPeriph_GPIOA
@@ -176,8 +162,4 @@
 #define TARGET_IO_PORTF (BIT(0)|BIT(1)|BIT(4))
 
 #define USED_TIMERS  (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(15))
-
-#define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3)
-#define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM1 | RCC_APB2Periph_TIM15)
-#define TIMER_AHB_PERIPHERALS (RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOC)
 

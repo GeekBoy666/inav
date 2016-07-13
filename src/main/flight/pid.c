@@ -59,8 +59,9 @@ typedef struct {
     float rateTarget;
 
     // Buffer for derivative calculation
-#define DTERM_BUF_COUNT 5
-    float dTermBuf[DTERM_BUF_COUNT];
+#define PID_GYRO_RATE_BUF_LENGTH 5
+    float gyroRateBuf[PID_GYRO_RATE_BUF_LENGTH];
+    firFilter_t gyroRateFilter;
 
     // Rate integrator
     float errorGyroIf;
@@ -70,11 +71,11 @@ typedef struct {
     float axisLockAccum;
 
     // Used for ANGLE filtering
-    filterStatePt1_t angleFilterState;
+    pt1Filter_t angleFilterState;
 
     // Rate filtering
-    filterStatePt1_t ptermLpfState;
-    filterStatePt1_t deltaLpfState;
+    pt1Filter_t ptermLpfState;
+    pt1Filter_t deltaLpfState;
 } pidState_t;
 
 extern uint8_t motorCount;
@@ -93,6 +94,17 @@ int32_t axisPID_P[FLIGHT_DYNAMICS_INDEX_COUNT], axisPID_I[FLIGHT_DYNAMICS_INDEX_
 
 static pidState_t pidState[FLIGHT_DYNAMICS_INDEX_COUNT];
 
+void pidInit(void)
+{
+    // Calculate derivative using 5-point noise-robust differentiators without time delay (one-sided or forward filters)
+    // by Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/numerical-derivative/smooth-low-noise-differentiators/
+    // h[0] = 5/8, h[-1] = 1/4, h[-2] = -1, h[-3] = -1/4, h[-4] = 3/8
+    static const float dtermCoeffs[PID_GYRO_RATE_BUF_LENGTH] = {5.0f/8, 2.0f/8, -8.0f/8, -2.0f/8, 3.0f/8};
+    for (int axis = 0; axis < 3; ++ axis) {
+        firFilterInit(&pidState[axis].gyroRateFilter, pidState[axis].gyroRateBuf, PID_GYRO_RATE_BUF_LENGTH, dtermCoeffs);
+    }
+}
+
 void pidResetErrorAccumulators(void)
 {
     // Reset R/P/Y integrator
@@ -105,14 +117,16 @@ void pidResetErrorAccumulators(void)
     pidState[FD_YAW].axisLockAccum = 0;
 }
 
-static float pidRcCommandToAngle(int16_t stick)
+static float pidRcCommandToAngle(int16_t stick, int16_t maxInclination)
 {
-    return stick * 2.0f;
+    stick = constrain(stick, -500, 500);
+    return scaleRangef((float) stick, -500.0f, 500.0f, (float) -maxInclination, (float) maxInclination);
 }
 
-int16_t pidAngleToRcCommand(float angleDeciDegrees)
+int16_t pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination)
 {
-    return angleDeciDegrees / 2.0f;
+    angleDeciDegrees = constrainf(angleDeciDegrees, (float) -maxInclination, (float) maxInclination);
+    return scaleRangef((float) angleDeciDegrees, (float) -maxInclination, (float) maxInclination, -500.0f, 500.0f);
 }
 
 /*
@@ -120,15 +134,24 @@ Map stick positions to desired rotatrion rate in given axis.
 Rotation rate in dps at full stick deflection is defined by axis rate measured in dps/10
 Rate 20 means 200dps at full stick deflection
 */
+float pidRateToRcCommand(float rateDPS, uint8_t rate)
+{
+    const float rateDPS_10 = constrainf(rateDPS / 10.0f, (float) -rate, (float) rate);
+    return scaleRangef(rateDPS_10, (float) -rate, (float) rate, -500.0f, 500.0f);
+}
+
 float pidRcCommandToRate(int16_t stick, uint8_t rate)
 {
     return scaleRangef((float) stick, (float) -500, (float) 500, (float) -rate, (float) rate) * 10;
 }
 
-#define FP_PID_RATE_P_MULTIPLIER    40.0f       // betaflight - 40.0
-#define FP_PID_RATE_I_MULTIPLIER    10.0f       // betaflight - 10.0
-#define FP_PID_RATE_D_MULTIPLIER    4000.0f     // betaflight - 1000.0
-#define FP_PID_LEVEL_P_MULTIPLIER   40.0f       // betaflight - 10.0
+/*
+FP-PID has been rescaled to match LuxFloat (and MWRewrite) from Cleanflight 1.13
+*/
+#define FP_PID_RATE_P_MULTIPLIER    31.0f
+#define FP_PID_RATE_I_MULTIPLIER    4.0f
+#define FP_PID_RATE_D_MULTIPLIER    1905.0f
+#define FP_PID_LEVEL_P_MULTIPLIER   65.6f
 #define FP_PID_YAWHOLD_P_MULTIPLIER 80.0f
 
 #define KD_ATTENUATION_BREAK        0.25f
@@ -191,39 +214,47 @@ static void pidApplyHeadingLock(const pidProfile_t *pidProfile, pidState_t *pidS
     }
 }
 
-static float calcHorizonLevelStrength(const pidProfile_t *pidProfile, const rxConfig_t *rxConfig)
+// Value derived from LibrePilot:
+//   we are looking for where the stick angle == transition angle
+//   and the Att rate equals the Rate rate
+//   that's where Rate x (1-StickAngle) [Attitude pulling down max X Ratt proportion]
+//   == Rate x StickAngle [Rate pulling up according to stick angle]
+//   * StickAngle [X Ratt proportion]
+//   so 1-x == x*x or x*x+x-1=0 where xE(0,1)
+//   (-1+-sqrt(1+4))/2 = (-1+sqrt(5))/2
+//   and quadratic formula says that is 0.618033989f
+#define STICK_DEFLECTION_AT_MODE_TRANSITION 0.618033989f
+static float calcHorizonRateMagnitude(const pidProfile_t *pidProfile, const rxConfig_t *rxConfig)
 {
-    float horizonLevelStrength = 1;
-
     // Figure out the raw stick positions
     const int32_t stickPosAil = ABS(getRcStickDeflection(FD_ROLL, rxConfig->midrc));
     const int32_t stickPosEle = ABS(getRcStickDeflection(FD_PITCH, rxConfig->midrc));
     const int32_t mostDeflectedPos = MAX(stickPosAil, stickPosEle);
+    const float modeTransitionStickPos = constrain(pidProfile->D8[PIDLEVEL], 0, 100) / 100.0f;
 
-    // Progressively turn off the horizon self level strength as the stick is banged over
-    horizonLevelStrength = (float)(500 - mostDeflectedPos) / 500;  // 1 at centre stick, 0 = max stick deflection
-    if (pidProfile->D8[PIDLEVEL] == 0){
-        horizonLevelStrength = 0;
-    } else {
-        horizonLevelStrength = constrainf(((horizonLevelStrength - 1) * (100.0f / pidProfile->D8[PIDLEVEL])) + 1, 0, 1);
+    float horizonRateMagnitude = mostDeflectedPos / 500.0f;
+
+    if (horizonRateMagnitude <= modeTransitionStickPos) {
+        horizonRateMagnitude *= STICK_DEFLECTION_AT_MODE_TRANSITION / modeTransitionStickPos;
     }
-    return horizonLevelStrength;
+    else {
+        horizonRateMagnitude = (horizonRateMagnitude - modeTransitionStickPos) *
+                               (1.0f - STICK_DEFLECTION_AT_MODE_TRANSITION) / (1.0f - modeTransitionStickPos) +
+                               STICK_DEFLECTION_AT_MODE_TRANSITION;
+    }
+
+    return horizonRateMagnitude;
 }
 
-static void pidLevel(const pidProfile_t *pidProfile, pidState_t *pidState, flight_dynamics_index_t axis, float horizonLevelStrength)
+static void pidLevel(const pidProfile_t *pidProfile, const controlRateConfig_t *controlRateConfig, pidState_t *pidState, flight_dynamics_index_t axis, float horizonRateMagnitude)
 {
     // This is ROLL/PITCH, run ANGLE/HORIZON controllers
-    const float angleTarget = pidRcCommandToAngle(rcCommand[axis]);
-    const float angleError = (constrain(angleTarget, -pidProfile->max_angle_inclination[axis], +pidProfile->max_angle_inclination[axis]) - attitude.raw[axis]) / 10.0f;
+    const float angleTarget = pidRcCommandToAngle(rcCommand[axis], pidProfile->max_angle_inclination[axis]);
+    const float angleError = angleTarget - attitude.raw[axis];
 
-    // P[LEVEL] defines self-leveling strength (both for ANGLE and HORIZON modes)
-    if (FLIGHT_MODE(HORIZON_MODE)) {
-        pidState->rateTarget += angleError * (pidProfile->P8[PIDLEVEL] / FP_PID_LEVEL_P_MULTIPLIER) * horizonLevelStrength;
-    } else {
-        pidState->rateTarget = angleError * (pidProfile->P8[PIDLEVEL] / FP_PID_LEVEL_P_MULTIPLIER);
-    }
+    float angleRateTarget = constrainf(angleError * (pidProfile->P8[PIDLEVEL] / FP_PID_LEVEL_P_MULTIPLIER), -controlRateConfig->rates[axis] * 10.0f, controlRateConfig->rates[axis] * 10.0f);
 
-    // Apply simple LPF to rateTarget to make response less jerky
+    // Apply simple LPF to angleRateTarget to make response less jerky
     // Ideas behind this:
     //  1) Attitude is updated at gyro rate, rateTarget for ANGLE mode is calculated from attitude
     //  2) If this rateTarget is passed directly into gyro-base PID controller this effectively doubles the rateError.
@@ -236,7 +267,14 @@ static void pidLevel(const pidProfile_t *pidProfile, pidState_t *pidState, fligh
     //     response to rapid attitude changes and smoothing out self-leveling reaction
     if (pidProfile->I8[PIDLEVEL]) {
         // I8[PIDLEVEL] is filter cutoff frequency (Hz). Practical values of filtering frequency is 5-10 Hz
-        pidState->rateTarget = filterApplyPt1(pidState->rateTarget, &pidState->angleFilterState, pidProfile->I8[PIDLEVEL], dT);
+        angleRateTarget = pt1FilterApply4(&pidState->angleFilterState, angleRateTarget, pidProfile->I8[PIDLEVEL], dT);
+    }
+
+    // P[LEVEL] defines self-leveling strength (both for ANGLE and HORIZON modes)
+    if (FLIGHT_MODE(HORIZON_MODE)) {
+        pidState->rateTarget = (1.0f - horizonRateMagnitude) * angleRateTarget + horizonRateMagnitude * pidState->rateTarget;
+    } else {
+        pidState->rateTarget = angleRateTarget;
     }
 }
 
@@ -253,7 +291,7 @@ static void pidApplyRateController(const pidProfile_t *pidProfile, pidState_t *p
 
     // Additional P-term LPF on YAW axis
     if (axis == FD_YAW && pidProfile->yaw_lpf_hz) {
-        newPTerm = filterApplyPt1(newPTerm, &pidState->ptermLpfState, pidProfile->yaw_lpf_hz, dT);
+        newPTerm = pt1FilterApply4(&pidState->ptermLpfState, newPTerm, pidProfile->yaw_lpf_hz, dT);
     }
 
     // Calculate new D-term
@@ -262,16 +300,12 @@ static void pidApplyRateController(const pidProfile_t *pidProfile, pidState_t *p
         // optimisation for when D8 is zero, often used by YAW axis
         newDTerm = 0;
     } else {
-        // Calculate derivative using 5-point noise-robust differentiators without time delay (one-sided or forward filters)
-        // by Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/numerical-derivative/smooth-low-noise-differentiators/
-        // h[0] = 5/8, h[-1] = 1/4, h[-2] = -1, h[-3] = -1/4, h[-4] = 3/8
-        static const float dtermCoeffs[DTERM_BUF_COUNT] = {5.0f, 2.0f, -8.0f, -2.0f, 3.0f};
-        filterUpdateFIR(DTERM_BUF_COUNT, pidState->dTermBuf, pidState->gyroRate);
-        newDTerm = filterApplyFIR(DTERM_BUF_COUNT, pidState->dTermBuf, dtermCoeffs, -pidState->kD / (8 * dT));
+        firFilterUpdate(&pidState->gyroRateFilter, pidState->gyroRate);
+        newDTerm = firFilterApply(&pidState->gyroRateFilter) * (-pidState->kD / dT);
 
         // Apply additional lowpass
         if (pidProfile->dterm_lpf_hz) {
-            newDTerm = filterApplyPt1(newDTerm, &pidState->deltaLpfState, pidProfile->dterm_lpf_hz, dT);
+            newDTerm = pt1FilterApply4(&pidState->deltaLpfState, newDTerm, pidProfile->dterm_lpf_hz, dT);
         }
     }
 
@@ -346,7 +380,7 @@ uint8_t getMagHoldState()
 float pidMagHold(const pidProfile_t *pidProfile)
 {
 
-    static filterStatePt1_t magHoldRateFilter;
+    static pt1Filter_t magHoldRateFilter;
     float magHoldRate;
 
     int16_t error = DECIDEGREES_TO_DEGREES(attitude.values.yaw) - magHoldTargetHeading;
@@ -394,7 +428,7 @@ float pidMagHold(const pidProfile_t *pidProfile)
 
     magHoldRate = error * pidProfile->P8[PIDMAG] / 30;
     magHoldRate = constrainf(magHoldRate, -pidProfile->mag_hold_rate_limit, pidProfile->mag_hold_rate_limit);
-    magHoldRate = filterApplyPt1(magHoldRate, &magHoldRateFilter, MAG_HOLD_ERROR_LPF_FREQ, dT);
+    magHoldRate = pt1FilterApply4(&magHoldRateFilter, magHoldRate, MAG_HOLD_ERROR_LPF_FREQ, dT);
 
     return magHoldRate;
 }
@@ -427,15 +461,15 @@ void pidController(const pidProfile_t *pidProfile, const controlRateConfig_t *co
 
     // Step 3: Run control for ANGLE_MODE, HORIZON_MODE, and HEADING_LOCK
     if (FLIGHT_MODE(ANGLE_MODE) || FLIGHT_MODE(HORIZON_MODE)) {
-        const float horizonLevelStrength = calcHorizonLevelStrength(pidProfile, rxConfig);
-        pidLevel(pidProfile, &pidState[FD_ROLL], FD_ROLL, horizonLevelStrength);
-        pidLevel(pidProfile, &pidState[FD_PITCH], FD_PITCH, horizonLevelStrength);
+        const float horizonRateMagnitude = calcHorizonRateMagnitude(pidProfile, rxConfig);
+        pidLevel(pidProfile, controlRateConfig, &pidState[FD_ROLL], FD_ROLL, horizonRateMagnitude);
+        pidLevel(pidProfile, controlRateConfig, &pidState[FD_PITCH], FD_PITCH, horizonRateMagnitude);
     }
 
     if (FLIGHT_MODE(HEADING_LOCK) && magHoldState != MAG_HOLD_ENABLED) {
         pidApplyHeadingLock(pidProfile, &pidState[FD_YAW]);
     }
-
+    
     // Step 4: Run gyro-driven control
     for (int axis = 0; axis < 3; axis++) {
         // Apply PID setpoint controller

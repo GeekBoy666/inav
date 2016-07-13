@@ -107,6 +107,15 @@ void useRcControlsConfig(modeActivationCondition_t *modeActivationConditions, es
     #ifdef STM32F10X_HD
         #define FLASH_PAGE_SIZE                 ((uint16_t)0x800)
     #endif
+
+    #if defined(STM32F40_41xxx)
+        #define FLASH_PAGE_SIZE                 ((uint32_t)0x20000)
+    #endif
+
+    #if defined (STM32F411xE)
+        #define FLASH_PAGE_SIZE                 ((uint32_t)0x20000)
+    #endif
+
 #endif
 
 #if !defined(FLASH_SIZE) && !defined(FLASH_PAGE_COUNT)
@@ -120,7 +129,13 @@ void useRcControlsConfig(modeActivationCondition_t *modeActivationConditions, es
 #endif
 
 #if defined(FLASH_SIZE)
+#if defined(STM32F40_41xxx)
+#define FLASH_PAGE_COUNT 4 // just to make calculations work
+#elif defined (STM32F411xE)
+#define FLASH_PAGE_COUNT 4 // just to make calculations work
+#else
 #define FLASH_PAGE_COUNT ((FLASH_SIZE * 0x400) / FLASH_PAGE_SIZE)
+#endif
 #endif
 
 #if !defined(FLASH_PAGE_SIZE)
@@ -138,7 +153,15 @@ void useRcControlsConfig(modeActivationCondition_t *modeActivationConditions, es
 #endif
 
 // use the last flash pages for storage
+#ifdef CUSTOM_FLASH_MEMORY_ADDRESS
+size_t custom_flash_memory_address = 0;
+#define CONFIG_START_FLASH_ADDRESS (custom_flash_memory_address)
+#else
+// use the last flash pages for storage
+#ifndef CONFIG_START_FLASH_ADDRESS 
 #define CONFIG_START_FLASH_ADDRESS (0x08000000 + (uint32_t)((FLASH_PAGE_SIZE * FLASH_PAGE_COUNT) - FLASH_TO_RESERVE_FOR_CONFIG))
+#endif
+#endif
 
 master_t masterConfig;                 // master config struct with data independent from profiles
 profile_t *currentProfile;
@@ -162,14 +185,14 @@ static void resetAccelerometerTrims(flightDynamicsTrims_t * accZero, flightDynam
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
-    pidProfile->P8[ROLL] = 30;
-    pidProfile->I8[ROLL] = 20;
-    pidProfile->D8[ROLL] = 70;
-    pidProfile->P8[PITCH] = 30;
-    pidProfile->I8[PITCH] = 20;
-    pidProfile->D8[PITCH] = 70;
-    pidProfile->P8[YAW] = 100;      // 2.5 * 40
-    pidProfile->I8[YAW] = 40;       // 4.0 * 10
+    pidProfile->P8[ROLL] = 40;
+    pidProfile->I8[ROLL] = 30;
+    pidProfile->D8[ROLL] = 23;
+    pidProfile->P8[PITCH] = 40;
+    pidProfile->I8[PITCH] = 30;
+    pidProfile->D8[PITCH] = 23;
+    pidProfile->P8[YAW] = 85;
+    pidProfile->I8[YAW] = 45;
     pidProfile->D8[YAW] = 0;        // not used
     pidProfile->P8[PIDALT] = 50;    // NAV_POS_Z_P * 100
     pidProfile->I8[PIDALT] = 0;     // not used
@@ -183,7 +206,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
     pidProfile->P8[PIDNAVR] = 10;   // FW_NAV_P * 100
     pidProfile->I8[PIDNAVR] = 5;    // FW_NAV_I * 100
     pidProfile->D8[PIDNAVR] = 8;    // FW_NAV_D * 100
-    pidProfile->P8[PIDLEVEL] = 120; // Self-level strength * 40 (4 * 40)
+    pidProfile->P8[PIDLEVEL] = 20;  // Self-level strength
     pidProfile->I8[PIDLEVEL] = 15;  // Self-leveing low-pass frequency (0 - disabled)
     pidProfile->D8[PIDLEVEL] = 75;  // 75% horizon strength
     pidProfile->P8[PIDMAG] = 60;
@@ -221,7 +244,7 @@ void resetNavConfig(navConfig_t * navConfig)
     navConfig->inav.gps_min_sats = 6;
     navConfig->inav.gps_delay_ms = 200;
     navConfig->inav.accz_unarmed_cal = 1;
-    navConfig->inav.use_gps_velned = 0;         // "Disabled" is mandatory with gps_nav_model = LOW_G
+    navConfig->inav.use_gps_velned = 1;         // "Disabled" is mandatory with gps_dyn_model = Pedestrian
 
     navConfig->inav.w_z_baro_p = 0.35f;
 
@@ -255,7 +278,7 @@ void resetNavConfig(navConfig_t * navConfig)
     // MC-specific
     navConfig->mc_max_bank_angle = 30;      // 30 deg
     navConfig->mc_hover_throttle = 1500;
-    navConfig->mc_min_fly_throttle = 1200;
+    navConfig->mc_auto_disarm_delay = 2000;
 
     // Fixed wing
     navConfig->fw_max_bank_angle = 20;      // 30 deg
@@ -520,7 +543,7 @@ static void resetConf(void)
 #ifdef GPS
     // gps/nav stuff
     masterConfig.gpsConfig.provider = GPS_UBLOX;
-    masterConfig.gpsConfig.sbasMode = SBAS_AUTO;
+    masterConfig.gpsConfig.sbasMode = SBAS_NONE;
     masterConfig.gpsConfig.autoConfig = GPS_AUTOCONFIG_ON;
     masterConfig.gpsConfig.autoBaud = GPS_AUTOBAUD_ON;
     masterConfig.gpsConfig.dynModel = GPS_DYNMODEL_AIR_1G;
@@ -788,6 +811,8 @@ void activateConfig(void)
     imuRuntimeConfig.small_angle = masterConfig.small_angle;
 
     imuConfigure(&imuRuntimeConfig, &currentProfile->pidProfile);
+
+    pidInit();
 
 #ifdef NAV
     navigationUseConfig(&masterConfig.navConfig);

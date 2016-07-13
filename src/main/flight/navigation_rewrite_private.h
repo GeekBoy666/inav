@@ -23,11 +23,11 @@
 
 #include "config/runtime_config.h"
 
-#define LAND_DETECTOR_TRIGGER_TIME_MS       2000        // 2 seconds
 #define MIN_POSITION_UPDATE_RATE_HZ         5       // Minimum position update rate at which XYZ controllers would be applied
 #define NAV_THROTTLE_CUTOFF_FREQENCY_HZ     4       // low-pass filter on throttle output
 #define NAV_ACCEL_CUTOFF_FREQUENCY_HZ       2       // low-pass filter on XY-acceleration target
 #define NAV_FW_VEL_CUTOFF_FREQENCY_HZ       2       // low-pass filter on Z-velocity for fixed wing
+#define NAV_FW_ROLL_CUTOFF_FREQUENCY_HZ     20      // low-pass filter on roll correction for fixed wing
 #define NAV_DTERM_CUT_HZ                    10
 #define NAV_ACCELERATION_XY_MAX             980.0f  // cm/s/s       // approx 45 deg lean angle
 
@@ -41,8 +41,8 @@
 
 typedef enum {
     NAV_POS_UPDATE_NONE                 = 0,
-    NAV_POS_UPDATE_XY                   = 1 << 0,
     NAV_POS_UPDATE_Z                    = 1 << 1,
+    NAV_POS_UPDATE_XY                   = 1 << 0,
     NAV_POS_UPDATE_HEADING              = 1 << 2,
     NAV_POS_UPDATE_BEARING              = 1 << 3,
     NAV_POS_UPDATE_BEARING_TAIL_FIRST   = 1 << 4,
@@ -55,10 +55,13 @@ typedef enum {
 } navUpdateAltitudeFromRateMode_e;
 
 typedef struct navigationFlags_s {
-    bool horizontalPositionNewData;
-    bool verticalPositionNewData;
-    bool surfaceDistanceNewData;
-    bool headingNewData;
+    bool horizontalPositionDataNew;
+    bool verticalPositionDataNew;
+    bool surfaceDistanceDataNew;
+    bool headingDataNew;
+
+    bool horizontalPositionDataConsumed;
+    bool verticalPositionDataConsumed;
 
     bool hasValidAltitudeSensor;        // Indicates that we have a working altitude sensor (got at least one valid reading from it)
     bool hasValidPositionSensor;        // Indicates that GPS is working (or not)
@@ -89,7 +92,7 @@ typedef struct {
 
 typedef struct {
     pidControllerParam_t param;
-    filterStatePt1_t dterm_filter_state;  // last derivative for low-pass filter
+    pt1Filter_t dterm_filter_state;  // last derivative for low-pass filter
     float integrator;       // integrator value
     float last_input;       // last input for derivative
 } pidController_t;
@@ -118,6 +121,7 @@ typedef struct {
     float       surface;
     float       surfaceVel;
     float       surfaceMin;
+    float       velXY;
 } navigationEstimatedState_t;
 
 typedef struct {
@@ -292,7 +296,7 @@ bool isLandingDetected(void);
 
 navigationFSMStateFlags_t navGetCurrentStateFlags(void);
 
-void setHomePosition(t_fp_vector * pos, int32_t yaw);
+void setHomePosition(t_fp_vector * pos, int32_t yaw, navSetWaypointFlags_t useMask);
 void setDesiredPosition(t_fp_vector * pos, int32_t yaw, navSetWaypointFlags_t useMask);
 void setDesiredSurfaceOffset(float surfaceOffset);
 void setDesiredPositionToFarAwayTarget(int32_t yaw, int32_t distance, navSetWaypointFlags_t useMask);
@@ -324,7 +328,12 @@ bool adjustMulticopterPositionFromRCInput(void);
 
 void applyMulticopterNavigationController(navigationFSMStateFlags_t navStateFlags, uint32_t currentTime);
 
-bool isMulticopterLandingDetected(uint32_t * landingTimer, bool * hasHadSomeVelocity);
+void resetFixedWingLandingDetector(void);
+void resetMulticopterLandingDetector(void);
+
+bool isMulticopterLandingDetected(void);
+bool isFixedWingLandingDetected(void);
+
 void calculateMulticopterInitialHoldPosition(t_fp_vector * pos);
 
 /* Fixed-wing specific functions */
@@ -340,7 +349,6 @@ bool adjustFixedWingPositionFromRCInput(void);
 
 void applyFixedWingNavigationController(navigationFSMStateFlags_t navStateFlags, uint32_t currentTime);
 
-bool isFixedWingLandingDetected(uint32_t * landingTimer);
 void calculateFixedWingInitialHoldPosition(t_fp_vector * pos);
 
 #endif

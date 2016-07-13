@@ -17,21 +17,13 @@
 
 #define TARGET_BOARD_IDENTIFIER "CC3D" // CopterControl 3D
 
-#define LED0
-#define LED0_GPIO   GPIOB
-#define LED0_PIN    Pin_3 // PB3 (LED)
-#define LED0_PERIPHERAL RCC_APB2Periph_GPIOB
+#define LED0                PB3
 
-#define BEEPER
-#define BEEP_GPIO GPIOA
-#define BEEP_PIN Pin_15 // PA15 (Beeper)
-#define BEEP_PERIPHERAL RCC_APB2Periph_GPIOA
+#define BEEPER              PA15
+#define BEEPER_OPT          PB2
 
-#define INVERTER
-#define INVERTER_PIN Pin_2 // PB2 (BOOT1) used as inverter select GPIO
-#define INVERTER_GPIO GPIOB
-#define INVERTER_PERIPHERAL RCC_APB2Periph_GPIOB
-#define INVERTER_USART USART1
+#define INVERTER            PB2 // PB2 (BOOT1) used as inverter select GPIO
+#define INVERTER_USART      USART1
 
 #define MPU6000_CS_GPIO       GPIOA
 #define MPU6000_CS_PIN        GPIO_Pin_4
@@ -61,14 +53,20 @@
 
 // External I2C BARO
 #define BARO
-#define USE_BARO_MS5611
 #define USE_BARO_BMP085
+#define USE_BARO_MS5611
+
+#if !defined(OPBL)
+#define USE_BARO_BMP280
+#endif 
 
 // External I2C MAG
 #define MAG
 #define USE_MAG_HMC5883
+#if !defined(OPBL)
 #define USE_MAG_AK8975
 #define USE_MAG_MAG3110
+#endif
 
 #define USE_VCP
 #define USE_USART1
@@ -201,7 +199,9 @@
 #define TARGET_MOTOR_COUNT 6
 #else
 #define TARGET_MOTOR_COUNT 4
+#undef USE_SONAR_SRF10
 #endif
+#undef USE_BARO_MS5611
 #undef BLACKBOX
 #undef TELEMETRY
 #undef TELEMETRY_LTM
@@ -229,10 +229,6 @@
 // IO - from schematics
 #define TARGET_IO_PORTA 0xffff
 #define TARGET_IO_PORTB 0xffff
-#define TARGET_IO_PORTC (BIT(14))
+#define TARGET_IO_PORTC ( BIT(14) )
 
-#define USED_TIMERS         (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4))
-
-#define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4)
-#define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM1 | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB)
-
+#define USED_TIMERS     ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) )

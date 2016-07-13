@@ -19,15 +19,11 @@
 
 #define TARGET_BOARD_IDENTIFIER "SPKY" // SParKY
 
-#define LED0
-#define LED0_GPIO   GPIOB
-#define LED0_PIN    Pin_4  // Blue (Rev 1 & 2) - PB4
-#define LED0_PERIPHERAL RCC_AHBPeriph_GPIOB
+#define LED0                PB4  // Blue (Rev 1 & 2) - PB4
+#define LED1                PB5  // Green (Rev 1) / Red (Rev 2) - PB5
 
-#define LED1
-#define LED1_GPIO   GPIOB
-#define LED1_PIN    Pin_5  // Green (Rev 1) / Red (Rev 2) - PB5
-#define LED1_PERIPHERAL RCC_AHBPeriph_GPIOB
+#define BEEPER              PA1
+#define BEEPER_INVERTED
 
 #define USABLE_TIMER_CHANNEL_COUNT 11
 
@@ -35,12 +31,12 @@
 #define GYRO
 #define USE_GYRO_MPU6050
 
-#define GYRO_MPU6050_ALIGN CW270_DEG
+#define GYRO_MPU6050_ALIGN  CW270_DEG
 
 #define ACC
 #define USE_ACC_MPU6050
 
-#define ACC_MPU6050_ALIGN CW270_DEG
+#define ACC_MPU6050_ALIGN   CW270_DEG
 
 #define BARO
 #define USE_BARO_MS5611
@@ -174,9 +170,6 @@
 #define TARGET_IO_PORTF (BIT(0)|BIT(1)|BIT(4))
 
 
-#define USED_TIMERS  (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(15) | TIM_N(17))
+#define USED_TIMERS     (TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(15) | TIM_N(17))
 
-#define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3)
-#define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM1 | RCC_APB2Periph_TIM15 | RCC_APB2Periph_TIM17)
-#define TIMER_AHB_PERIPHERALS (RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB)
 
