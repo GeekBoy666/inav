@@ -602,6 +602,7 @@ ifeq ($(TARGET),$(filter $(TARGET),$(F4_TARGETS)))
 TARGET_SRC := $(STM32F4xx_COMMON_SRC) $(TARGET_SRC)
 else ifeq ($(TARGET),$(filter $(TARGET),$(F7_TARGETS)))
 EXCLUDES =  drivers/bus_spi.c \
+            drivers/bus_i2c.c \
             drivers/pwm_output.c \
             drivers/serial_uart.c \
             drivers/timer.c
@@ -650,10 +651,17 @@ VPATH        := $(VPATH):$(STDPERIPH_DIR)/src
 # Things that might need changing to use different tools
 #
 
+# Find out if ccache is installed on the system
+CCACHE := ccache
+RESULT = $(shell which $(CCACHE))
+ifeq ($(RESULT),)
+CCACHE :=
+endif
+
 # Tool names
-CC          = arm-none-eabi-gcc
-OBJCOPY     = arm-none-eabi-objcopy
-SIZE        = arm-none-eabi-size
+CC          := $(CCACHE) arm-none-eabi-gcc
+OBJCOPY     := arm-none-eabi-objcopy
+SIZE        := arm-none-eabi-size
 
 #
 # Tool options.
