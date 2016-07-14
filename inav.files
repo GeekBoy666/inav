@@ -784,7 +784,6 @@ src/main/drivers/sound_beeper.c
 src/main/drivers/sound_beeper.h
 src/main/drivers/sound_beeper_stm32f10x.c
 src/main/drivers/sound_beeper_stm32f30x.c
-src/main/drivers/sound_beeper_stm32f7xx.c
 src/main/drivers/system.c
 src/main/drivers/system.h
 src/main/drivers/system_stm32f10x.c

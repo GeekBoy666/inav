@@ -306,7 +306,6 @@ void IOConfigGPIOAF(IO_t io, ioConfig_t cfg, uint8_t af)
         .Pull = (cfg >> 5) & 0x03,
         .Alternate = af,
     };
-    GPIO_TypeDef* port = IO_GPIO(io);
     HAL_GPIO_Init(IO_GPIO(io), &init);
 }
 
