@@ -21,29 +21,36 @@
 
 #define TARGET_BOARD_IDENTIFIER "MODULOF7"
 
+#define TARGET_MOTOR_COUNT 16
+
 #ifndef USE_HAL_DRIVER
 #define USE_HAL_DRIVER
 #endif
 
 #ifndef FLASH_SIZE
-#define FLASH_SIZE (1024)
+#define FLASH_SIZE (2048)
 #endif
-#define FLASH_PAGE_SIZE ((FLASH_SIZE*1024)/MCU_FLASH_NR_SECTORS)
+#define FLASH_PAGE_SIZE (256*1024)
 
-#define LED0_GPIO   GPIOE
-#define LED0_PIN    Pin_15
-#define LED1_GPIO   GPIOE
-#define LED1_PIN    Pin_12
-#define LED2_GPIO   GPIOE
-#define LED2_PIN    Pin_10
 
-#define BEEPER
+#define LED0 PE15 // Green
+#define LED1 PE12 // white
+#define LED2 PE10 // blue
+#define LED2_INVERTED
+//#define LED0_GPIO   GPIOE
+//#define LED0_PIN    Pin_15
+//#define LED1_GPIO   GPIOE
+//#define LED1_PIN    Pin_12
+//#define LED2_GPIO   GPIOE
+//#define LED2_PIN    Pin_10
+
+#define BEEPER PE4
 #define BEEPER_INVERTED
-#define BEEP_GPIO GPIOE
-#define BEEP_PIN Pin_4 // PA15 (Beeper)
-#define BEEP_PERIPHERAL 0 // FIXME: remove dependency
+//#define BEEP_GPIO GPIOE
+//#define BEEP_PIN Pin_4
+//#define BEEP_PERIPHERAL 0 // FIXME: remove dependency
 
-
+#define USE_ADC
 // ADC
 #define VBAT_ADC_GPIO               GPIOC
 #define VBAT_ADC_GPIO_PIN           Pin_3
@@ -66,6 +73,12 @@
 //#define INVERTER_PERIPHERAL RCC_AHB1Periph_GPIOC
 //#define INVERTER_USART USART1
 
+#define USE_FAKE_GYRO
+#define USE_FAKE_ACC
+#define USE_FAKE_BARO
+#define USE_FAKE_MAG
+
+
 #define MPU6500_CS_GPIO       GPIOA
 #define MPU6500_CS_PIN        Pin_15
 #define MPU6500_SPI_INSTANCE  SPIDEV_1
@@ -85,6 +98,8 @@
 #define USE_MAG_HMC5883
 #define HMC5883_BUS I2C_DEVICE_INT
 #define MAG_HMC5883_ALIGN CW90_DEG
+#define USE_MAG_AK8975
+#define AK8975_BUS I2C_DEVICE_INT
 
 #define BARO
 #define USE_BARO_BMP280
@@ -99,8 +114,6 @@
 #define I2CGPS_BUS I2C_DEVICE_INT
 
 //#define INVERTER
-#define LED0
-#define LED1
 
 //#define M25P16_CS_GPIO        GPIOB
 //#define M25P16_CS_PIN         GPIO_Pin_3
@@ -111,7 +124,7 @@
 
 #define USABLE_TIMER_CHANNEL_COUNT 24
 
-//#define USE_VCP
+#define USE_VCP
 
 #define USE_USART1
 #define USART1_RX_PIN Pin_10
@@ -120,28 +133,35 @@
 #define USE_USART1_RX_DMA false
 #define USE_USART1_TX_DMA true
 
+#define USE_USART2
+#define USART2_RX_PIN Pin_7
+#define USART2_TX_PIN Pin_6
+#define USART2_GPIO GPIOC
+#define USE_USART2_RX_DMA false
+#define USE_USART2_TX_DMA true
 
-//#define USE_USART2
-//#define USART2_RX_PIN Pin_7
-//#define USART2_TX_PIN Pin_6
-//#define USART2_GPIO GPIOC
-
-//#define USE_USART3
-//#define USART3_RX_PIN Pin_11
-//#define USART3_TX_PIN Pin_10
-//#define USART3_GPIO GPIOB
+#define USE_USART3
+#define USART3_RX_PIN Pin_11
+#define USART3_TX_PIN Pin_10
+#define USART3_GPIO GPIOB
+#define USE_USART3_RX_DMA false
+#define USE_USART3_TX_DMA true
 
 //#define USE_USART4
-//#define USART4_RX_PIN Pin_7
-//#define USART4_TX_PIN Pin_6
-//#define USART4_GPIO GPIOC
+#define USART4_RX_PIN Pin_7
+#define USART4_TX_PIN Pin_6
+#define USART4_GPIO GPIOC
+#define USE_USART4_RX_DMA false
+#define USE_USART4_TX_DMA false // TX dma conflicts with ledstrip dma
 
-//#define USE_USART6
-//#define USART6_RX_PIN Pin_7
-//#define USART6_TX_PIN Pin_6
-//#define USART6_GPIO GPIOC
+#define USE_USART6
+#define USART6_RX_PIN Pin_7
+#define USART6_TX_PIN Pin_6
+#define USART6_GPIO GPIOC
+#define USE_USART6_RX_DMA false
+#define USE_USART6_TX_DMA true
 
-#define SERIAL_PORT_COUNT (6) // 5 x U(S)ART 1x USB vcp
+#define SERIAL_PORT_COUNT (5) // 5 x U(S)ART 1x USB vcp
 #define UART_INDEX_MAX (8)
 
 //#define USE_ESCSERIAL
@@ -182,6 +202,7 @@
 #define USE_I2C
 #define I2C_DEVICE_INT (I2CDEV_1)
 #define I2C_DEVICE_EXT (I2CDEV_2)
+#define I2C_DEVICE I2C_DEVICE_INT
 
 #define I2C1_SCL_GPIO GPIOB
 #define I2C1_SCL_PIN Pin_6
@@ -201,7 +222,7 @@
 
 #define SENSORS_SET (SENSOR_ACC|SENSOR_MAG|SENSOR_BARO)
 
-#define LED_STRIP
+//#define LED_STRIP
 #define LED_STRIP_GPIO              GPIOA
 #define LED_STRIP_PIN               Pin_6
 #define LED_STRIP_AF                GPIO_AF2_TIM3
@@ -238,3 +259,14 @@
 
 #define TIMER_APB1_PERIPHERALS (RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM5 | RCC_APB1Periph_TIM12 | RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC)
 #define TIMER_APB2_PERIPHERALS (RCC_APB2Periph_TIM8 | RCC_APB2Periph_TIM9)
+
+#define TARGET_IO_PORTA 0xffff
+#define TARGET_IO_PORTB 0xffff
+#define TARGET_IO_PORTC 0xffff
+#define TARGET_IO_PORTD 0xffff
+#define TARGET_IO_PORTE 0xffff
+#define TARGET_IO_PORTF 0xffff
+
+#define CONFIG_START_FLASH_ADDRESS  0x080C0000U
+#define CONFIG_START_FLASH_SECTOR   7
+

@@ -96,42 +96,40 @@ const uint16_t airPWM[] = {
 //   Timer, port , pin  , Channel      ,  IRQn       , out, mode,   , pinsource      , alternate function
 const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
     // inputs
-    { TIM1, GPIOE, Pin_9, TIM_CHANNEL_1, TIM1_CC_IRQn, 1, Mode_AF_PP_PD, 9, GPIO_AF1_TIM1},               // RX1,         PE9
-    { TIM1, GPIOE, Pin_11, TIM_CHANNEL_2, TIM1_CC_IRQn, 1, Mode_AF_PP_PD, 11, GPIO_AF1_TIM1},             // RX2,         PE11
-    { TIM1, GPIOE, Pin_13, TIM_CHANNEL_3, TIM1_CC_IRQn, 1, Mode_AF_PP_PD, 13, GPIO_AF1_TIM1},             // RX3,         PE13
-    { TIM1, GPIOE, Pin_14, TIM_CHANNEL_4, TIM1_CC_IRQn, 1, Mode_AF_PP_PD, 14, GPIO_AF1_TIM1},             // RX4,         PE14
-    
-    { TIM3, GPIOE, Pin_5, TIM_CHANNEL_3, TIM3_IRQn, 1, Mode_AF_PP_PD, 5, GPIO_AF2_TIM3},                  // RX5          PE5
-    { TIM3, GPIOE, Pin_6, TIM_CHANNEL_4, TIM3_IRQn, 1, Mode_AF_PP_PD, 6, GPIO_AF2_TIM3},                  // RX6,         PE6
-    
+    { TIM1  , IO_TAG(PE9)   , TIM_CHANNEL_1, TIM1_CC_IRQn, 0, IOCFG_AF_PP, GPIO_AF1_TIM1},               // RX1,         PE9
+    { TIM1  , IO_TAG(PE11)  , TIM_CHANNEL_2, TIM1_CC_IRQn, 0, IOCFG_AF_PP, GPIO_AF1_TIM1},             // RX2,         PE11
+    { TIM1  , IO_TAG(PE13)  , TIM_CHANNEL_3, TIM1_CC_IRQn, 0, IOCFG_AF_PP, GPIO_AF1_TIM1},             // RX3,         PE13
+    { TIM1  , IO_TAG(PE14)  , TIM_CHANNEL_4, TIM1_CC_IRQn, 0, IOCFG_AF_PP, GPIO_AF1_TIM1},             // RX4,         PE14
+    { TIM3  , IO_TAG(PE5)   , TIM_CHANNEL_3, TIM3_IRQn, 0, IOCFG_AF_PP, GPIO_AF2_TIM3},                  // RX5          PE5
+    { TIM3  , IO_TAG(PE6)   , TIM_CHANNEL_4, TIM3_IRQn, 0, IOCFG_AF_PP, GPIO_AF2_TIM3},                  // RX6,         PE6
     
     // outputs
-    { TIM4, GPIOD, Pin_12, TIM_CHANNEL_1, TIM4_IRQn, 1, Mode_AF_PP_PD, 12, GPIO_AF2_TIM4},                // OUT1,        PD12
-    { TIM4, GPIOD, Pin_13, TIM_CHANNEL_2, TIM4_IRQn, 1, Mode_AF_PP_PD, 13, GPIO_AF2_TIM4},                // OUT2,        PD13
-    { TIM4, GPIOD, Pin_14, TIM_CHANNEL_3, TIM4_IRQn, 1, Mode_AF_PP_PD, 14, GPIO_AF2_TIM4},                // OUT3,        PD14
-    { TIM4, GPIOD, Pin_15, TIM_CHANNEL_4, TIM4_IRQn, 1, Mode_AF_PP_PD, 15, GPIO_AF2_TIM4},                // OUT4,        PD15
+    { TIM4  , IO_TAG(PD12)  , TIM_CHANNEL_1, TIM4_IRQn, 1, IOCFG_AF_PP, GPIO_AF2_TIM4},                // OUT1,        PD12
+    { TIM4  , IO_TAG(PD13)  , TIM_CHANNEL_2, TIM4_IRQn, 1, IOCFG_AF_PP, GPIO_AF2_TIM4},                // OUT2,        PD13
+    { TIM4  , IO_TAG(PD14)  , TIM_CHANNEL_3, TIM4_IRQn, 1, IOCFG_AF_PP, GPIO_AF2_TIM4},                // OUT3,        PD14
+    { TIM4  , IO_TAG(PD15)  , TIM_CHANNEL_4, TIM4_IRQn, 1, IOCFG_AF_PP, GPIO_AF2_TIM4},                // OUT4,        PD15
+            
+    { TIM9  , IO_TAG(PE5)   , TIM_CHANNEL_1, TIM1_BRK_TIM9_IRQn, 1, IOCFG_AF_PP, GPIO_AF3_TIM9},         // OUT5,        PE5
+    { TIM9  , IO_TAG(PE6)   , TIM_CHANNEL_2, TIM1_BRK_TIM9_IRQn, 1, IOCFG_AF_PP, GPIO_AF3_TIM9},         // OUT6,        PE6
     
-    { TIM9, GPIOE, Pin_5, TIM_CHANNEL_1, TIM1_BRK_TIM9_IRQn, 1, Mode_AF_PP_PD, 5, GPIO_AF3_TIM9},         // OUT5,        PE5
-    { TIM9, GPIOE, Pin_6, TIM_CHANNEL_2, TIM1_BRK_TIM9_IRQn, 1, Mode_AF_PP_PD, 6, GPIO_AF3_TIM9},         // OUT6,        PE6
-    
-    { TIM10, GPIOB, Pin_8, TIM_CHANNEL_1, TIM1_UP_TIM10_IRQn, 1, Mode_AF_PP_PD, 8, GPIO_AF3_TIM10},       // OUT7,        PB8
+    { TIM10 , IO_TAG(PB8)   , TIM_CHANNEL_1, TIM1_UP_TIM10_IRQn, 1, IOCFG_AF_PP, GPIO_AF3_TIM10},       // OUT7,        PB8
 
-    { TIM11, GPIOB, Pin_9, TIM_CHANNEL_1, TIM1_TRG_COM_TIM11_IRQn, 1, Mode_AF_PP_PD, 9, GPIO_AF3_TIM11},  // OUT8,        PB9
+    { TIM11 , IO_TAG(PB9)   , TIM_CHANNEL_1, TIM1_TRG_COM_TIM11_IRQn, 1, IOCFG_AF_PP, GPIO_AF3_TIM11},  // OUT8,        PB9
     
     // other
-    { TIM13, GPIOA, Pin_6, TIM_CHANNEL_1, TIM8_UP_TIM13_IRQn, 1, Mode_AF_PP_PD, 6, GPIO_AF9_TIM13},       // LEDStrip,    PA6
-   
-    { TIM14, GPIOA, Pin_7, TIM_CHANNEL_1, TIM8_TRG_COM_TIM14_IRQn, 1, Mode_AF_PP_PD, 7, GPIO_AF9_TIM14},  // IR,          PA7
+    { TIM13 , IO_TAG(PA6)   , TIM_CHANNEL_1, TIM8_UP_TIM13_IRQn, 1, IOCFG_AF_PP, GPIO_AF9_TIM13},       // LEDStrip,    PA6
+                            
+    { TIM14 , IO_TAG(PA7)   , TIM_CHANNEL_1, TIM8_TRG_COM_TIM14_IRQn, 1, IOCFG_AF_PP, GPIO_AF9_TIM14},  // IR,          PA7
     
     // optional extra but shared with other default functions
-    { TIM5, GPIOA, Pin_0, TIM_CHANNEL_1, TIM5_IRQn, 1, Mode_AF_PP_PD, 0, GPIO_AF9_TIM13},                 // UART4_TX,    PA0
-    { TIM5, GPIOA, Pin_1, TIM_CHANNEL_2, TIM5_IRQn, 1, Mode_AF_PP_PD, 1, GPIO_AF9_TIM13},                 // UART4_RX,    PA1
+    { TIM5  , IO_TAG(PA0)   , TIM_CHANNEL_1, TIM5_IRQn, 0, IOCFG_AF_PP, GPIO_AF9_TIM13},                 // UART4_TX,    PA0
+    { TIM5  , IO_TAG(PA1)   , TIM_CHANNEL_2, TIM5_IRQn, 0, IOCFG_AF_PP, GPIO_AF9_TIM13},                 // UART4_RX,    PA1
     
-    { TIM2, GPIOA, Pin_5, TIM_CHANNEL_1, TIM2_IRQn, 1, Mode_AF_PP_PD, 5, GPIO_AF9_TIM13},                 // ANALOG_DAC,  PA5
-    { TIM2, GPIOB, Pin_10, TIM_CHANNEL_3, TIM2_IRQn, 1, Mode_AF_PP_PD, 10, GPIO_AF9_TIM13},               // I2C2_SCL,    PB10
-    { TIM2, GPIOB, Pin_11, TIM_CHANNEL_4, TIM2_IRQn, 1, Mode_AF_PP_PD, 11, GPIO_AF9_TIM13},               // I2C2_SDA,    PB11
+    { TIM2  , IO_TAG(PA5)   , TIM_CHANNEL_1, TIM2_IRQn, 0, IOCFG_AF_PP, GPIO_AF9_TIM13},                 // ANALOG_DAC,  PA5
+    { TIM2  , IO_TAG(PB10)  , TIM_CHANNEL_3, TIM2_IRQn, 0, IOCFG_AF_PP, GPIO_AF9_TIM13},               // I2C2_SCL,    PB10
+    { TIM2  , IO_TAG(PB11)  , TIM_CHANNEL_4, TIM2_IRQn, 0, IOCFG_AF_PP, GPIO_AF9_TIM13},               // I2C2_SDA,    PB11
     
-    { TIM8, GPIOC, Pin_6, TIM_CHANNEL_1, TIM8_CC_IRQn, 1, Mode_AF_PP_PD, 6, GPIO_AF9_TIM13},              // UART6_TX,    PC6
-    { TIM8, GPIOC, Pin_7, TIM_CHANNEL_2, TIM8_CC_IRQn, 1, Mode_AF_PP_PD, 7, GPIO_AF9_TIM13},              // UART6_RX,    PC7
-    { TIM8, GPIOC, Pin_9, TIM_CHANNEL_4, TIM8_CC_IRQn, 1, Mode_AF_PP_PD, 9, GPIO_AF9_TIM13},              // I2C3_SDA,    PC9
+    { TIM8  , IO_TAG(PC6)   , TIM_CHANNEL_1, TIM8_CC_IRQn, 0, IOCFG_AF_PP, GPIO_AF9_TIM13},              // UART6_TX,    PC6
+    { TIM8  , IO_TAG(PC7)   , TIM_CHANNEL_2, TIM8_CC_IRQn, 0, IOCFG_AF_PP, GPIO_AF9_TIM13},              // UART6_RX,    PC7
+    { TIM8  , IO_TAG(PC9)   , TIM_CHANNEL_4, TIM8_CC_IRQn, 0, IOCFG_AF_PP, GPIO_AF9_TIM13},              // I2C3_SDA,    PC9
 };
