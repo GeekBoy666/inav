@@ -1,3 +1,4 @@
+/inav.creator.user
 *.creator.user.*
 /stm32f7discovery.cfg
 *.o
