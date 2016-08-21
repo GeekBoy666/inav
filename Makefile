@@ -16,7 +16,7 @@
 #
 
 # The target to build, see VALID_TARGETS below
-TARGET    ?= NUCLEOF7
+TARGET    ?= MODULOF7
 
 # Compile-time options
 OPTIONS   ?=
@@ -325,11 +325,15 @@ endif
 ARCH_FLAGS      = -mthumb -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fsingle-precision-constant -Wdouble-promotion
 DEVICE_FLAGS    = -DUSE_HAL_DRIVER -DHSE_VALUE=8000000
 ifeq ($(TARGET),MODULOF7)
+STM32F7xx_STARTUP = startup_stm32f745xx.s
 DEVICE_FLAGS   += -DSTM32F745xx
 LD_SCRIPT       = $(LINKER_DIR)/STM32F745VGTx_FLASH.ld
+DEVICE_FLAGS    += -DBOARD_HSE_ON=RCC_HSE_ON
 else ifeq ($(TARGET),NUCLEOF7)
+STM32F7xx_STARTUP = startup_stm32f767xx.s
 DEVICE_FLAGS   += -DSTM32F767xx
 LD_SCRIPT       = $(LINKER_DIR)/STM32F767ZITx_FLASH.ld
+DEVICE_FLAGS    += -DBOARD_HSE_ON=RCC_HSE_BYPASS
 else
 $(error Unknown F7 target)
 endif
@@ -584,7 +588,7 @@ STM32F4xx_COMMON_SRC = \
             drivers/dma_stm32f4xx.c
             
 STM32F7xx_COMMON_SRC =  \
-            startup_stm32f767xx.s \
+            $(STM32F7xx_STARTUP) \
             target/stm32f7xx_hal_compat.c \
             drivers/system_stm32f7xx.c \
             drivers/adc_stm32f7xx.c \
