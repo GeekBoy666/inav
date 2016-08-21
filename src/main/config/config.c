@@ -133,8 +133,6 @@ void useRcControlsConfig(modeActivationCondition_t *modeActivationConditions, es
 #define FLASH_PAGE_COUNT 4 // just to make calculations work
 #elif defined (STM32F411xE)
 #define FLASH_PAGE_COUNT 4 // just to make calculations work
-#elif defined(USE_HAL_DRIVER)
-    #define FLASH_PAGE_COUNT MCU_FLASH_SECTORS
 #else
 #define FLASH_PAGE_COUNT ((FLASH_SIZE * 0x400) / FLASH_PAGE_SIZE)
 #endif
@@ -154,9 +152,9 @@ void useRcControlsConfig(modeActivationCondition_t *modeActivationConditions, es
     #define FLASH_TO_RESERVE_FOR_CONFIG 0x1000
 #endif
 #ifdef USE_HAL_DRIVER
-    const uint32_t flash_sectors[] = MCU_FLASH_SECTORS;
-    #define CONFIG_START_FLASH_ADDRESS 0x081C0000U//(FLASH_END-(flash_sectors[MCU_FLASH_NR_SECTORS-1]*1024))
-    static uint32_t start_add;
+#if !defined(CONFIG_START_FLASH_ADDRESS) && !defined(CONFIG_START_FLASH_SECTOR)
+    #error Please define CONFIG_START_FLASH_ADDRESS and CONFIG_START_FLASH_SECTOR in your tarhet.h
+#endif
 #else
 // use the last flash pages for storage
 #ifdef CUSTOM_FLASH_MEMORY_ADDRESS
@@ -1066,7 +1064,6 @@ void writeEEPROM(void)
     masterConfig.chk = 0; // erase checksum before recalculating
     masterConfig.chk = calculateChecksum((const uint8_t *) &masterConfig, sizeof(master_t));
 
-    start_add = (FLASH_END-(flash_sectors[MCU_FLASH_NR_SECTORS-1]*1024));
     // write it
     /* Unlock the Flash to enable the flash control register access *************/
     HAL_FLASH_Unlock();
@@ -1076,7 +1073,7 @@ void writeEEPROM(void)
         FLASH_EraseInitTypeDef EraseInitStruct = {0};
         EraseInitStruct.TypeErase     = FLASH_TYPEERASE_SECTORS;
         EraseInitStruct.VoltageRange  = FLASH_VOLTAGE_RANGE_3; // 2.7-3.6V
-        EraseInitStruct.Sector        = 11;//(MCU_FLASH_NR_SECTORS-1);
+        EraseInitStruct.Sector        = CONFIG_START_FLASH_SECTOR;
         EraseInitStruct.NbSectors     = 1;
         uint32_t SECTORError;
         status = HAL_FLASHEx_Erase(&EraseInitStruct, &SECTORError);
