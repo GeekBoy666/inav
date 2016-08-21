@@ -22,11 +22,13 @@
 #include <math.h>
 
 #include "platform.h"
-#include "build_config.h"
+#include "build/build_config.h"
+
 
 #if defined(GPS) && defined(GPS_PROTO_NAZA)
 
-#include "debug.h"
+#include "build/debug.h"
+
 
 #include "common/maths.h"
 #include "common/axis.h"
@@ -43,7 +45,8 @@
 #include "flight/gps_conversion.h"
 
 #include "config/config.h"
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
 
 #define NAZA_MAX_PAYLOAD_SIZE   256
 
@@ -73,7 +76,7 @@ typedef struct {
     uint16_t pdop;  // 40
     uint16_t vdop;  // 42
     uint16_t ndop; // 44
-    uint16_t edop;	// 46
+    uint16_t edop;  // 46
     uint8_t satellites; // 48
     uint8_t reserved3; //
     uint8_t fix_type; // 50
@@ -81,7 +84,7 @@ typedef struct {
     uint8_t fix_status; // 52
     uint8_t reserved5;
     uint8_t reserved6;
-    uint8_t mask;	// 55
+    uint8_t mask;   // 55
 } naza_nav;
 
 enum {

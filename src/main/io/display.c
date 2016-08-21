@@ -21,9 +21,11 @@
 #include <string.h>
 
 #include "platform.h"
-#include "version.h"
 
-#include "build_config.h"
+#ifdef DISPLAY
+
+#include "build/version.h"
+#include "build/build_config.h"
 
 #include "drivers/serial.h"
 #include "drivers/system.h"
@@ -37,8 +39,6 @@
 #include "common/axis.h"
 #include "common/typeconversion.h"
 
-#ifdef DISPLAY
-
 #include "sensors/battery.h"
 #include "sensors/sensors.h"
 #include "sensors/compass.h"
@@ -48,7 +48,8 @@
 
 #include "rx/rx.h"
 
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+
 
 #include "flight/pid.h"
 #include "flight/imu.h"
@@ -59,7 +60,8 @@
 #include "flight/navigation_rewrite.h"
 #endif
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
 
 #include "config/config.h"
 
@@ -304,11 +306,11 @@ void showStatusPage(void)
     uint8_t rowIndex = PAGE_TITLE_LINE_COUNT;
 
     if (feature(FEATURE_VBAT)) {
-        i2c_OLED_set_line(rowIndex++);        
+        i2c_OLED_set_line(rowIndex++);
         tfp_sprintf(lineBuffer, "V: %d.%1d ", vbat / 10, vbat % 10);
         padLineBufferToChar(12);
         i2c_OLED_send_string(lineBuffer);
-        
+
         uint8_t batteryPercentage = calculateBatteryPercentage();
         drawHorizonalPercentageBar(10, batteryPercentage);
     }
@@ -318,25 +320,25 @@ void showStatusPage(void)
         tfp_sprintf(lineBuffer, "mAh: %d", mAhDrawn);
         padLineBufferToChar(12);
         i2c_OLED_send_string(lineBuffer);
-        
+
         uint8_t capacityPercentage = calculateBatteryCapacityRemainingPercentage();
         drawHorizonalPercentageBar(10, capacityPercentage);
     }
-    
+
     rowIndex++;
-    
+
 #ifdef GPS
     if (feature(FEATURE_GPS)) {
         tfp_sprintf(lineBuffer, "Sats: %d", gpsSol.numSat);
         padHalfLineBuffer();
         i2c_OLED_set_line(rowIndex);
         i2c_OLED_send_string(lineBuffer);
-        
+
         tfp_sprintf(lineBuffer, "Fix: %s", gpsFixTypeText[gpsSol.fixType]);
         padHalfLineBuffer();
         i2c_OLED_set_xy(HALF_SCREEN_CHARACTER_COLUMN_COUNT, rowIndex++);
         i2c_OLED_send_string(lineBuffer);
-        
+
         tfp_sprintf(lineBuffer, "HDOP: %d.%1d", gpsSol.hdop / 100, gpsSol.hdop % 100);
         padLineBuffer();
         i2c_OLED_set_line(rowIndex++);
@@ -346,10 +348,10 @@ void showStatusPage(void)
         padLineBuffer();
         i2c_OLED_set_line(rowIndex++);
         i2c_OLED_send_string(lineBuffer);
-        
+
     }
 #endif
-    
+
 #ifdef MAG
     if (sensors(SENSOR_MAG)) {  
         tfp_sprintf(lineBuffer, "HDG: %d", DECIDEGREES_TO_DEGREES(attitude.values.yaw));
@@ -367,8 +369,8 @@ void showStatusPage(void)
         i2c_OLED_set_xy(HALF_SCREEN_CHARACTER_COLUMN_COUNT, rowIndex);
         i2c_OLED_send_string(lineBuffer);
     }
-#endif    
-    
+#endif
+
 }
 
 void updateDisplay(void)
@@ -423,7 +425,7 @@ void updateDisplay(void)
         if (!displayPresent) {
             return;
         }
-        
+
         i2c_OLED_clear_display_quick();
         showTitle();
     }

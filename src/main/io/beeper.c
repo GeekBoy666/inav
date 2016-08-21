@@ -20,7 +20,8 @@
 #include "stdlib.h"
 
 #include "platform.h"
-#include "build_config.h"
+#include "build/build_config.h"
+
 
 #include "drivers/gpio.h"
 #include "drivers/sound_beeper.h"
@@ -29,14 +30,16 @@
 #include "sensors/sensors.h"
 
 #include "rx/rx.h"
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+
 #include "io/statusindicator.h"
 
 #ifdef GPS
 #include "io/gps.h"
 #endif
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
 #include "config/config.h"
 
 #include "io/beeper.h"
@@ -170,7 +173,7 @@ typedef struct beeperTableEntry_s {
     { BEEPER_ENTRY(BEEPER_SYSTEM_INIT,           16, NULL,                 "SYSTEM_INIT") },
     { BEEPER_ENTRY(BEEPER_USB,                   17, NULL,                 "ON_USB") },
 
-    { BEEPER_ENTRY(BEEPER_ALL,                   18, NULL,      		   "ALL") },
+    { BEEPER_ENTRY(BEEPER_ALL,                   18, NULL,                 "ALL") },
     { BEEPER_ENTRY(BEEPER_PREFERENCE,            19, NULL,                 "PREFERED") },
 };
 
@@ -306,7 +309,7 @@ void beeperUpdate(void)
     if (!beeperIsOn) {
         beeperIsOn = 1;
         if (currentBeeperEntry->sequence[beeperPos] != 0) {
-        	if (!(getBeeperOffMask() & (1 << (currentBeeperEntry->mode - 1))))
+            if (!(getBeeperOffMask() & (1 << (currentBeeperEntry->mode - 1))))
                 BEEP_ON;
 
             warningLedEnable();
