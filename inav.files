@@ -1162,3 +1162,5 @@ openocd.cfg
 program_target.cfg
 README.md
 Vagrantfile
+src/main/target/MODULOF7/target.mk
+src/main/target/MODULOF7/MODULOF7.mk

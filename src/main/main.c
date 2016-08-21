@@ -162,10 +162,13 @@ void init(void)
 {
 #ifdef USE_HAL_DRIVER
     HAL_Init();
+    
+    delay(2000); // just during development, failing writing the eeprom sometimes makes it really hard to reprogram the device
 
 #endif
     printfSupportInit();
 
+    
     initEEPROM();
 
     ensureEEPROMContainsValidData();
@@ -432,8 +435,9 @@ void init(void)
     LED1_ON;
     LED0_OFF;
     for (int i = 0; i < 10; i++) {
-        LED1_TOGGLE;
         LED0_TOGGLE;
+        LED1_TOGGLE;
+        LED2_TOGGLE;
         delay(25);
         BEEP_ON;
         delay(25);
@@ -441,6 +445,7 @@ void init(void)
     }
     LED0_OFF;
     LED1_OFF;
+    LED2_OFF;
 
 #ifdef MAG
     if (sensors(SENSOR_MAG))

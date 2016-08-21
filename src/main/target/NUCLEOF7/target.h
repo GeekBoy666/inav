@@ -33,9 +33,9 @@
 #define FLASH_PAGE_SIZE (256*1024)
 
 
-#define LED0 PE15
+#define LED0 PE10
 #define LED1 PE12
-#define LED2 PE10
+#define LED2 PE15
 //#define LED0_GPIO   GPIOE
 //#define LED0_PIN    Pin_15
 //#define LED1_GPIO   GPIOE
