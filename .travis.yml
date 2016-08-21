@@ -1,25 +1,15 @@
 env:
-  - RUNTESTS=True
-  - PUBLISHMETA=True
-  - PUBLISHDOCS=True
   - TARGET=CC3D
-  - TARGET=COLIBRI_RACE
-  - TARGET=CHEBUZZF3
-  - TARGET=CJMCU
-  - TARGET=EUSTM32F103RC
-  - TARGET=SPRACINGF3
-  - TARGET=LUX_RACE  
-  - TARGET=MOTOLAB
   - TARGET=NAZE
-  - TARGET=NAZE32PRO
-  - TARGET=OLIMEXINO
-  - TARGET=RMDO
-  - TARGET=PORT103R
-  - TARGET=SPARKY
   - TARGET=STM32F3DISCOVERY
-  - TARGET=ALIENWIIF1
-  - TARGET=ALIENWIIF3
-
+  - TARGET=RMDO
+  - TARGET=SPRACINGF3
+  - TARGET=SPRACINGF3EVO
+  - TARGET=SPARKY
+  - TARGET=FURYF3
+  - TARGET=FURYF3_SPIFLASH
+  - TARGET=RCEXPLORERF3
+  
 # use new docker environment
 sudo: false
 
@@ -51,6 +41,10 @@ script: ./.travis.sh
 cache: apt
 
 notifications:
-  irc: "chat.freenode.net#cleanflight"
-  use_notice: true
-  skip_join: true
+  email: false
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/34e795df229478ac3a3b
+    on_success: always
+    on_failure: always
+    on_start: never

@@ -23,9 +23,11 @@
 #include <string.h>
 
 #include <platform.h>
-#include "build_config.h"
 
 #ifdef USE_RX_H8_3D
+
+#include "build/build_config.h"
+
 
 #include "drivers/rx_nrf24l01.h"
 #include "drivers/rx_xn297.h"
@@ -47,7 +49,7 @@
  * H8_3D Protocol
  * No auto acknowledgment
  * Payload size is 20, static
- * Data rate is 1Kbps
+ * Data rate is 1Mbps
  * Bind Phase
  * uses address {0xab,0xac,0xad,0xae,0xaf}, converted by XN297 to {0x41, 0xbd, 0x42, 0xd4, 0xc2}
  * hops between 4 channels
@@ -68,8 +70,6 @@
 #define FLAG_CAMERA_UP  0x04 // on payload[18]
 #define FLAG_CAMERA_DOWN 0x08 // on payload[18]
 
-STATIC_UNIT_TESTED nrf24_protocol_t h8_3dProtocol;
-
 typedef enum {
     STATE_BIND = 0,
     STATE_DATA
@@ -82,16 +82,17 @@ STATIC_UNIT_TESTED uint8_t payloadSize;
 
 #define CRC_LEN 2
 #define RX_TX_ADDR_LEN     5
-//STATIC_UNIT_TESTED uint8_t rxTxAddr[RX_TX_ADDR_LEN] = {0xc4, 0x57, 0x09, 0x65, 0x21};
 STATIC_UNIT_TESTED uint8_t rxTxAddrXN297[RX_TX_ADDR_LEN] = {0x41, 0xbd, 0x42, 0xd4, 0xc2}; // converted XN297 address
 #define TX_ID_LEN 4
 STATIC_UNIT_TESTED uint8_t txId[TX_ID_LEN];
+uint32_t *nrf24rxIdPtr;
 
 // radio channels for frequency hopping
 #define H8_3D_RF_CHANNEL_COUNT 4
 STATIC_UNIT_TESTED uint8_t h8_3dRfChannelCount = H8_3D_RF_CHANNEL_COUNT;
 STATIC_UNIT_TESTED uint8_t h8_3dRfChannelIndex;
 STATIC_UNIT_TESTED uint8_t h8_3dRfChannels[H8_3D_RF_CHANNEL_COUNT];
+// hop between these channels in the bind phase
 #define H8_3D_RF_BIND_CHANNEL_START 0x06
 #define H8_3D_RF_BIND_CHANNEL_END 0x26
 
@@ -111,6 +112,10 @@ STATIC_UNIT_TESTED bool h8_3dCheckBindPacket(const uint8_t *payload)
             txId[1] = payload[2];
             txId[2] = payload[3];
             txId[3] = payload[4];
+            if (nrf24rxIdPtr != NULL && *nrf24rxIdPtr == 0) {
+                // copy the txId so it can be saved
+                memcpy(nrf24rxIdPtr, txId, sizeof(uint32_t));
+            }
         }
     }
     return bindPacket;
@@ -126,7 +131,7 @@ STATIC_UNIT_TESTED uint16_t h8_3dConvertToPwm(uint8_t val, int16_t _min, int16_t
     return (uint16_t)ret;
 }
 
-void h8_3dSetRcDataFromPayload(uint16_t *rcData, const uint8_t *payload)
+void h8_3dNrf24SetRcDataFromPayload(uint16_t *rcData, const uint8_t *payload)
 {
     rcData[NRF24_ROLL] = h8_3dConvertToPwm(payload[12], 0xbb, 0x43); // aileron
     rcData[NRF24_PITCH] = h8_3dConvertToPwm(payload[11], 0x43, 0xbb); // elevator
@@ -179,21 +184,14 @@ static void h8_3dHopToNextChannel(void)
 }
 
 // The hopping channels are determined by the txId
-void h8_3dSetHoppingChannels(const uint8_t* txId)
+static void h8_3dSetHoppingChannels(const uint8_t *txId)
 {
-#ifndef XXX
     for (int ii = 0; ii < H8_3D_RF_CHANNEL_COUNT; ++ii) {
         h8_3dRfChannels[ii] = 0x06 + (0x0f * ii) + ((txId[ii] >> 4) + (txId[ii] & 0x0f)) % 0x0f;
     }
-#else
-    h8_3dRfChannels[0] = 0x06 + ((txId[0]>>4) + (txId[0] & 0x0f)) % 0x0f;
-    h8_3dRfChannels[1] = 0x15 + ((txId[1]>>4) + (txId[1] & 0x0f)) % 0x0f;
-    h8_3dRfChannels[2] = 0x24 + ((txId[2]>>4) + (txId[2] & 0x0f)) % 0x0f;
-    h8_3dRfChannels[3] = 0x33 + ((txId[3]>>4) + (txId[3] & 0x0f)) % 0x0f;
-#endif
 }
 
-void h8_3dSetBound(const uint8_t* txId)
+static void h8_3dSetBound(const uint8_t *txId)
 {
     protocolState = STATE_DATA;
     h8_3dSetHoppingChannels(txId);
@@ -203,12 +201,12 @@ void h8_3dSetBound(const uint8_t* txId)
     NRF24L01_SetChannel(h8_3dRfChannels[0]);
 }
 
-bool crcOK(uint16_t crc, const uint8_t *payload)
+static bool h8_3dCrcOK(uint16_t crc, const uint8_t *payload)
 {
-    if (payload[payloadSize - CRC_LEN] != (crc >> 8)) {
+    if (payload[payloadSize] != (crc >> 8)) {
         return false;
     }
-    if (payload[payloadSize - CRC_LEN + 1] != (crc & 0xff)) {
+    if (payload[payloadSize + 1] != (crc & 0xff)) {
         return false;
     }
     return true;
@@ -218,29 +216,29 @@ bool crcOK(uint16_t crc, const uint8_t *payload)
  * This is called periodically by the scheduler.
  * Returns NRF24L01_RECEIVED_DATA if a data packet was received.
  */
-nrf24_received_t h8_3dDataReceived(uint8_t *payload)
+nrf24_received_t h8_3dNrf24DataReceived(uint8_t *payload)
 {
     nrf24_received_t ret = NRF24_RECEIVED_NONE;
+    bool payloadReceived = false;
+    if (NRF24L01_ReadPayloadIfAvailable(payload, payloadSize + CRC_LEN)) {
+        const uint16_t crc = XN297_UnscramblePayload(payload, payloadSize, rxTxAddrXN297);
+        if (h8_3dCrcOK(crc, payload)) {
+            payloadReceived = true;
+        }
+    }
     switch (protocolState) {
     case STATE_BIND:
-        if (NRF24L01_ReadPayloadIfAvailable(payload, payloadSize)) {
-            const uint16_t crc = XN297_UnscramblePayload(payload, payloadSize - CRC_LEN, rxTxAddrXN297);
-            if (crcOK(crc, payload)) {
-                const bool bindPacket = h8_3dCheckBindPacket(payload);
-                if (bindPacket) {
-                    ret = NRF24_RECEIVED_BIND;
-                    h8_3dSetBound(txId);
-                }
+        if (payloadReceived) {
+            const bool bindPacket = h8_3dCheckBindPacket(payload);
+            if (bindPacket) {
+                ret = NRF24_RECEIVED_BIND;
+                h8_3dSetBound(txId);
             }
         }
         break;
     case STATE_DATA:
-        // read the payload, processing of payload is deferred
-        if (NRF24L01_ReadPayloadIfAvailable(payload, payloadSize)) {
-            const uint16_t crc = XN297_UnscramblePayload(payload - CRC_LEN, payloadSize, rxTxAddrXN297);
-            if (crcOK(crc, payload)) {
-                ret = NRF24_RECEIVED_DATA;
-            }
+        if (payloadReceived) {
+            ret = NRF24_RECEIVED_DATA;
         }
         break;
     }
@@ -252,38 +250,34 @@ nrf24_received_t h8_3dDataReceived(uint8_t *payload)
     return ret;
 }
 
-void h8_3dNrf24Init(nrf24_protocol_t protocol, const uint8_t* nrf24_id)
+static void h8_3dNrf24Setup(nrf24_protocol_t protocol, const uint32_t *nrf24rx_id)
 {
-    h8_3dProtocol = protocol;
+    UNUSED(protocol);
     protocolState = STATE_BIND;
 
     NRF24L01_Initialize(0); // sets PWR_UP, no CRC - hardware CRC not used for XN297
+    NRF24L01_SetupBasic();
 
-    NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0); // No auto acknowledgment
-    NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, BV(NRF24L01_02_EN_RXADDR_ERX_P0));
-    NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, NRF24L01_03_SETUP_AW_5BYTES);   // 5-byte RX/TX address
     NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, NRF24L01_06_RF_SETUP_RF_DR_1Mbps | NRF24L01_06_RF_SETUP_RF_PWR_n12dbm);
     // RX_ADDR for pipes P1-P5 are left at default values
     NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, rxTxAddrXN297, RX_TX_ADDR_LEN);
-    if ((nrf24_id[0] | nrf24_id[1] | nrf24_id[2] | nrf24_id[3]) == 0) {
+    nrf24rxIdPtr = (uint32_t*)nrf24rx_id;
+    if (nrf24rx_id == NULL || *nrf24rx_id == 0) {
         h8_3dRfChannelIndex = H8_3D_RF_BIND_CHANNEL_START;
         NRF24L01_SetChannel(H8_3D_RF_BIND_CHANNEL_START);
     } else {
-        h8_3dSetBound(nrf24_id);
+        h8_3dSetBound((uint8_t*)nrf24rx_id);
     }
 
-    NRF24L01_WriteReg(NRF24L01_08_OBSERVE_TX, 0x00);
-    NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x00); // Disable dynamic payload length on all pipes
-
-    payloadSize = H8_3D_PROTOCOL_PAYLOAD_SIZE + CRC_LEN; // payload + 2 bytes CRC
-    NRF24L01_WriteReg(NRF24L01_11_RX_PW_P0, payloadSize); // payload + 2 bytes CRC
+    payloadSize = H8_3D_PROTOCOL_PAYLOAD_SIZE;
+    NRF24L01_WriteReg(NRF24L01_11_RX_PW_P0, payloadSize + CRC_LEN); // payload + 2 bytes CRC
 
     NRF24L01_SetRxMode(); // enter receive mode to start listening for packets
 }
 
-void h8_3dInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
+void h8_3dNrf24Init(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
 {
     rxRuntimeConfig->channelCount = RC_CHANNEL_COUNT;
-    h8_3dNrf24Init((nrf24_protocol_t)rxConfig->nrf24rx_protocol, rxConfig->nrf24rx_id);
+    h8_3dNrf24Setup((nrf24_protocol_t)rxConfig->nrf24rx_protocol, &rxConfig->nrf24rx_id);
 }
 #endif

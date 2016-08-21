@@ -57,26 +57,29 @@
 #include <string.h>
 
 #include "platform.h"
-#include "build_config.h"
-#include "debug.h"
+
+
 
 #if defined(TELEMETRY) && defined(TELEMETRY_HOTT)
+
+#include "build/build_config.h"
+#include "build/debug.h"
 
 #include "common/axis.h"
 
 #include "drivers/system.h"
-
 #include "drivers/serial.h"
-#include "io/serial.h"
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
+#include "io/serial.h"
+#include "io/gps.h"
 
 #include "sensors/sensors.h"
 #include "sensors/battery.h"
 
 #include "flight/pid.h"
 #include "flight/navigation_rewrite.h"
-#include "io/gps.h"
 
 #include "telemetry/telemetry.h"
 #include "telemetry/hott.h"
@@ -424,8 +427,8 @@ static void hottCheckSerialData(uint32_t currentMicros)
 }
 
 static void workAroundForHottTelemetryOnUsart(serialPort_t *instance, portMode_t mode) {
-	closeSerialPort(hottPort);
-	hottPort = openSerialPort(instance->identifier, FUNCTION_TELEMETRY_HOTT, NULL, HOTT_BAUDRATE, mode, SERIAL_NOT_INVERTED);
+    closeSerialPort(hottPort);
+    hottPort = openSerialPort(instance->identifier, FUNCTION_TELEMETRY_HOTT, NULL, HOTT_BAUDRATE, mode, SERIAL_NOT_INVERTED);
 }
 
 static void hottSendTelemetryData(void) {
@@ -433,9 +436,9 @@ static void hottSendTelemetryData(void) {
         hottIsSending = true;
         // FIXME temorary workaround for HoTT not working on Hardware serial ports due to hardware/softserial serial port initialisation differences
         if ((portConfig->identifier == SERIAL_PORT_USART1) || (portConfig->identifier == SERIAL_PORT_USART2) || (portConfig->identifier == SERIAL_PORT_USART3))
-        	workAroundForHottTelemetryOnUsart(hottPort, MODE_TX);
+            workAroundForHottTelemetryOnUsart(hottPort, MODE_TX);
         else
-        	serialSetMode(hottPort, MODE_TX);
+            serialSetMode(hottPort, MODE_TX);
         hottMsgCrc = 0;
         return;
     }
@@ -445,9 +448,9 @@ static void hottSendTelemetryData(void) {
         hottIsSending = false;
         // FIXME temorary workaround for HoTT not working on Hardware serial ports due to hardware/softserial serial port initialisation differences
         if ((portConfig->identifier == SERIAL_PORT_USART1) || (portConfig->identifier == SERIAL_PORT_USART2) || (portConfig->identifier == SERIAL_PORT_USART3))
-        	workAroundForHottTelemetryOnUsart(hottPort, MODE_RX);
+            workAroundForHottTelemetryOnUsart(hottPort, MODE_RX);
         else
-        	serialSetMode(hottPort, MODE_RX);
+            serialSetMode(hottPort, MODE_RX);
         flushHottRxBuffer();
         return;
     }

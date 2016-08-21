@@ -21,7 +21,8 @@
 #include <math.h>
 
 #include "platform.h"
-#include "debug.h"
+
+#include "build/debug.h"
 
 #include "scheduler/scheduler.h"
 #include "scheduler/scheduler_tasks.h"
@@ -53,11 +54,13 @@
 #include "sensors/gyro.h"
 #include "sensors/battery.h"
 
+#include "fc/rc_controls.h"
+#include "fc/rc_curves.h"
+#include "fc/runtime_config.h"
+
 #include "io/beeper.h"
 #include "io/display.h"
 #include "io/escservo.h"
-#include "io/rc_controls.h"
-#include "io/rc_curves.h"
 #include "io/gimbal.h"
 #include "io/gps.h"
 #include "io/ledstrip.h"
@@ -65,6 +68,7 @@
 #include "io/serial_cli.h"
 #include "io/serial_msp.h"
 #include "io/statusindicator.h"
+#include "io/asyncfatfs/asyncfatfs.h"
 
 #include "rx/rx.h"
 #include "rx/msp.h"
@@ -79,7 +83,6 @@
 #include "flight/failsafe.h"
 #include "flight/navigation_rewrite.h"
 
-#include "config/runtime_config.h"
 #include "config/config.h"
 #include "config/config_profile.h"
 #include "config/config_master.h"
@@ -126,30 +129,14 @@ bool isCalibrating(void)
     return (!isAccelerationCalibrationComplete() && sensors(SENSOR_ACC)) || (!isGyroCalibrationComplete());
 }
 
-int16_t getAxisRcCommand(int16_t rawData, int16_t (*loopupTable)(int32_t), int16_t deadband)
+int16_t getAxisRcCommand(int16_t rawData, int16_t rate, int16_t deadband)
 {
-    int16_t command, absoluteDeflection;
+    int16_t stickDeflection;
 
-    absoluteDeflection = MIN(ABS(rawData - masterConfig.rxConfig.midrc), 500);
+    stickDeflection = constrain(rawData - masterConfig.rxConfig.midrc, -500, 500);
+    stickDeflection = applyDeadband(stickDeflection, deadband);
 
-    if (deadband) {
-        if (absoluteDeflection > deadband) {
-            absoluteDeflection -= deadband;
-        } else {
-            absoluteDeflection = 0;
-        }
-    }
-
-    /*
-        Get command from lookup table after applying deadband
-    */
-    command = loopupTable(absoluteDeflection);
-
-    if (rawData < masterConfig.rxConfig.midrc) {
-        command = -command;
-    }
-
-    return command;
+    return rcLookup(stickDeflection, rate);
 }
 
 void annexCode(void)
@@ -158,9 +145,9 @@ void annexCode(void)
     int32_t throttleValue;
 
     // Compute ROLL PITCH and YAW command
-    rcCommand[ROLL] = getAxisRcCommand(rcData[ROLL], rcLookupPitchRoll, currentProfile->rcControlsConfig.deadband);
-    rcCommand[PITCH] = getAxisRcCommand(rcData[PITCH], rcLookupPitchRoll, currentProfile->rcControlsConfig.deadband);
-    rcCommand[YAW] = -getAxisRcCommand(rcData[YAW], rcLookupYaw, currentProfile->rcControlsConfig.yaw_deadband);
+    rcCommand[ROLL] = getAxisRcCommand(rcData[ROLL], currentControlRateProfile->rcExpo8, currentProfile->rcControlsConfig.deadband);
+    rcCommand[PITCH] = getAxisRcCommand(rcData[PITCH], currentControlRateProfile->rcExpo8, currentProfile->rcControlsConfig.deadband);
+    rcCommand[YAW] = -getAxisRcCommand(rcData[YAW], currentControlRateProfile->rcYawExpo8, currentProfile->rcControlsConfig.yaw_deadband);
 
     //Compute THROTTLE command
     throttleValue = constrain(rcData[THROTTLE], masterConfig.rxConfig.mincheck, PWM_RANGE_MAX);
@@ -352,7 +339,7 @@ void processRx(void)
 
     processRcStickPositions(&masterConfig.rxConfig, throttleStatus, masterConfig.disarm_kill_switch);
 
-    updateActivatedModes(currentProfile->modeActivationConditions);
+    updateActivatedModes(currentProfile->modeActivationConditions, currentProfile->modeActivationOperator);
 
     if (!cliMode) {
         updateAdjustmentStates(currentProfile->adjustmentRanges);
@@ -396,6 +383,24 @@ void processRx(void)
         }
     } else {
         DISABLE_FLIGHT_MODE(HEADING_LOCK);
+    }
+
+    /* Flaperon mode */
+    if (IS_RC_MODE_ACTIVE(BOXFLAPERON) && STATE(FLAPERON_AVAILABLE)) {
+        if (!FLIGHT_MODE(FLAPERON)) {
+            ENABLE_FLIGHT_MODE(FLAPERON);
+        }
+    } else {
+        DISABLE_FLIGHT_MODE(FLAPERON);
+    }
+
+    /* Turn assistant mode */
+    if (IS_RC_MODE_ACTIVE(BOXTURNASSIST)) {
+        if (!FLIGHT_MODE(TURN_ASSISTANT)) {
+            ENABLE_FLIGHT_MODE(TURN_ASSISTANT);
+        }
+    } else {
+        DISABLE_FLIGHT_MODE(TURN_ASSISTANT);
     }
 
 #if defined(MAG)
@@ -452,17 +457,8 @@ void processRx(void)
                 DISABLE_STATE(ANTI_WINDUP);
                 pidResetErrorAccumulators();
             }
-
-            // Enable low-throttle PID attenuation on multicopters
-            if (!STATE(FIXED_WING)) {
-                ENABLE_STATE(PID_ATTENUATE);
-            }
-            else {
-                DISABLE_STATE(PID_ATTENUATE);
-            }
         }
         else {
-            DISABLE_STATE(PID_ATTENUATE);
             DISABLE_STATE(ANTI_WINDUP);
         }
     }
@@ -608,7 +604,7 @@ void taskMainPidLoop(void)
 #ifdef USE_SERVOS
 
     if (isMixerUsingServos()) {
-        servoMixer();
+        servoMixer(currentProfile->flaperon_throw_offset, currentProfile->flaperon_throw_inverted);
     }
 
     if (feature(FEATURE_SERVO_TILT)) {
@@ -625,6 +621,10 @@ void taskMainPidLoop(void)
     if (motorControlEnable) {
         writeMotors();
     }
+
+#ifdef USE_SDCARD
+        afatfs_poll();
+#endif
 
 #ifdef BLACKBOX
     if (!cliMode && feature(FEATURE_BLACKBOX)) {

@@ -20,7 +20,8 @@
 #include <stdlib.h>
 
 #include "platform.h"
-#include "build_config.h"
+#include "build/build_config.h"
+
 
 #include "drivers/system.h"
 #include "drivers/io.h"
@@ -40,7 +41,7 @@ static IO_t HWDetectPin = IO_NONE;
 void detectHardwareRevision(void)
 {
     HWDetectPin = IOGetByTag(IO_TAG(HW_PIN));
-    IOInit(HWDetectPin, OWNER_SYSTEM, RESOURCE_INPUT);
+    IOInit(HWDetectPin, OWNER_SYSTEM, RESOURCE_INPUT, 0);
     IOConfigGPIO(HWDetectPin, IOCFG_IPU);
 
     // Check hardware revision
@@ -57,7 +58,6 @@ void updateHardwareRevision(void)
 {
 }
 
-/* !!TODO - this has been deferred
 const extiConfig_t *selectMPUIntExtiConfigByHardwareRevision(void)
 {
     // MPU_INT output on V1 PA15
@@ -76,4 +76,3 @@ const extiConfig_t *selectMPUIntExtiConfigByHardwareRevision(void)
         return &alienFlightF3V2MPUIntExtiConfig;
     }
 }
-*/

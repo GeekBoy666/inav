@@ -12,9 +12,11 @@
 .cproject
 obj/
 patches/
+startup_stm32f10x_md_gcc.s
 .vagrant/
 *.user.*
 
 # script-generated files
 docs/Manual.pdf
 README.pdf
+

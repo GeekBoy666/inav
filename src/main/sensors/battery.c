@@ -26,14 +26,16 @@
 #include "drivers/adc.h"
 #include "drivers/system.h"
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
 #include "config/config.h"
 
 #include "sensors/battery.h"
 
 #include "rx/rx.h"
 
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+
 #include "io/beeper.h"
 
 #define VBATT_PRESENT_THRESHOLD_MV    10
@@ -80,7 +82,7 @@ static void updateBatteryVoltage(uint32_t vbatTimeDelta)
 void updateBattery(uint32_t vbatTimeDelta)
 {
     updateBatteryVoltage(vbatTimeDelta);
-    
+
     /* battery has just been connected*/
     if (batteryState == BATTERY_NOT_PRESENT && vbat > VBATT_PRESENT_THRESHOLD_MV)
     {
@@ -109,7 +111,7 @@ void updateBattery(uint32_t vbatTimeDelta)
         batteryCellCount = 0;
         batteryWarningVoltage = 0;
         batteryCriticalVoltage = 0;
-    }    
+    }
 
     switch(batteryState)
     {
@@ -208,7 +210,7 @@ void updateCurrentMeter(int32_t lastUpdateAt, rxConfig_t *rxConfig, uint16_t dea
 
 uint8_t calculateBatteryPercentage(void)
 {
-    return (((uint32_t)vbat - (batteryConfig->vbatmincellvoltage * batteryCellCount)) * 100) / ((batteryConfig->vbatmaxcellvoltage - batteryConfig->vbatmincellvoltage) * batteryCellCount);
+    return constrain((((uint32_t)vbat - (batteryConfig->vbatmincellvoltage * batteryCellCount)) * 100) / ((batteryConfig->vbatmaxcellvoltage - batteryConfig->vbatmincellvoltage) * batteryCellCount), 0, 100);
 }
 
 uint8_t calculateBatteryCapacityRemainingPercentage(void)

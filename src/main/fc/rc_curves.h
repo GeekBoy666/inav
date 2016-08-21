@@ -17,10 +17,10 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
+struct controlRateConfig_s;
+struct escAndServoConfig_s;
+void generateThrottleCurve(struct controlRateConfig_s *controlRateConfig, struct escAndServoConfig_s *escAndServoConfig);
 
-void refInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig);
-void refSetRcDataFromPayload(uint16_t *rcData, const uint8_t *payload);
-nrf24_received_t refDataReceived(uint8_t *payload);
-
+int16_t rcLookup(int32_t stickDeflection, uint8_t expo);
+int16_t rcLookupThrottle(int32_t tmp);
+int16_t rcLookupThrottleMid(void);

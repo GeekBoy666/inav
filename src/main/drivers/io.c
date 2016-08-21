@@ -5,6 +5,7 @@
 #include "rcc.h"
 
 #include "target.h"
+#include "build/assert.h"
 
 // io ports defs are stored in array by index now
 struct ioPortDef_s {
@@ -64,8 +65,26 @@ const struct ioPortDef_s ioPortDefs[] = {
 #warning Unknown target
 # endif
 
+const char * const ownerNames[OWNER_TOTAL_COUNT] = {
+    "FREE", "PWM", "PPM", "MOTOR", "SERVO", "SOFTSERIAL", "ADC", "SERIAL", "DEBUG", "TIMER",
+    "SONAR", "SYSTEM", "SPI", "I2C", "SDCARD", "FLASH", "USB", "BEEPER", "OSD",
+    "BARO", "MPU", "INVERTER", "LED STRIP", "LED", "RECEIVER", "TRANSMITTER",
+    "SOFTSPI", "NRF24"
+};
+
+const char * const resourceNames[RESOURCE_TOTAL_COUNT] = {
+    "", // NONE
+    "IN", "OUT", "IN / OUT", "TIMER","UART TX","UART RX","UART TX/RX","EXTI","SCL",
+    "SDA", "SCK","MOSI","MISO","CS","BATTERY","RSSI","EXT","CURRENT", "CE"
+};
+
+
 ioRec_t* IO_Rec(IO_t io)
 {
+    ASSERT(io != NULL);
+    ASSERT((ioRec_t*)io >= &ioRecs[0]);
+    ASSERT((ioRec_t*)io < &ioRecs[DEFIO_IO_USED_COUNT]);
+
     return io;
 }
 
@@ -203,12 +222,12 @@ void IOToggle(IO_t io)
 }
 
 // claim IO pin, set owner and resources
-void IOInit(IO_t io, resourceOwner_t owner, resourceType_t resources)
+void IOInit(IO_t io, resourceOwner_t owner, resourceType_t resource, uint8_t index)
 {
     ioRec_t *ioRec = IO_Rec(io);
-    if (owner != OWNER_FREE)   // pass OWNER_FREE to keep old owner
-        ioRec->owner = owner;
-    ioRec->resourcesUsed |= resources;
+    ioRec->owner = owner;
+    ioRec->resource = resource;
+    ioRec->index = index;
 }
 
 void IORelease(IO_t io)
@@ -223,10 +242,10 @@ resourceOwner_t IOGetOwner(IO_t io)
     return ioRec->owner;
 }
 
-resourceType_t IOGetResources(IO_t io)
+resourceType_t IOGetResource(IO_t io)
 {
     ioRec_t *ioRec = IO_Rec(io);
-    return ioRec->resourcesUsed;
+    return ioRec->resource;
 }
 
 #if defined(STM32F1)

@@ -20,12 +20,12 @@
 #include <math.h>
 #include <string.h>
 
-#include "build_config.h"
 #include "platform.h"
 
 #if defined(NAV)
 
-#include "debug.h"
+#include "build/build_config.h"
+#include "build/debug.h"
 
 #include "common/axis.h"
 #include "common/maths.h"
@@ -47,7 +47,7 @@
 #include "flight/navigation_rewrite.h"
 #include "flight/navigation_rewrite_private.h"
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
 #include "config/config.h"
 
 /**
@@ -235,7 +235,7 @@ static bool detectGPSGlitch(uint32_t currentTime)
             isGlitching = true;
         }
     }
-    
+
     if (!isGlitching) {
         previousTime = currentTime;
         lastKnownGoodPosition = posEstimator.gps.pos;
@@ -451,6 +451,11 @@ static void updateIMUTopic(void)
         }
 
         posEstimator.imu.accelNEU.V.Z -= calibratedGravityCMSS;
+
+        /* Update blackbox values */
+        navAccNEU[X] = posEstimator.imu.accelNEU.A[X];
+        navAccNEU[Y] = posEstimator.imu.accelNEU.A[Y];
+        navAccNEU[Z] = posEstimator.imu.accelNEU.A[Z];
     }
 }
 
@@ -517,7 +522,10 @@ static void updateEstimatedTopic(uint32_t currentTime)
 #endif
 
     /* Apply GPS altitude corrections only on fixed wing aircrafts */
-    bool useGpsZ = STATE(FIXED_WING) && isGPSValid;
+    bool useGpsZPos = STATE(FIXED_WING) && isGPSValid;
+
+    /* GPS correction for velocity might be used on all aircrafts */
+    bool useGpsZVel = isGPSValid;
 
     /* Pre-calculate history index for GPS delay compensation */
     int gpsHistoryIndex = (posEstimator.history.index - 1) - constrain(((int)posControl.navConfig->inav.gps_delay_ms / (1000 / INAV_POSITION_PUBLISH_RATE_HZ)), 0, INAV_HISTORY_BUF_SIZE - 1);
@@ -538,10 +546,14 @@ static void updateEstimatedTopic(uint32_t currentTime)
             accelBiasCorr.V.Y -= (posEstimator.gps.pos.V.Y - posEstimator.history.pos[gpsHistoryIndex].V.Y) * sq(posControl.navConfig->inav.w_xy_gps_p);
             accelBiasCorr.V.Y -= (posEstimator.gps.vel.V.Y - posEstimator.history.vel[gpsHistoryIndex].V.Y) * posControl.navConfig->inav.w_xy_gps_v;
 
-            if (useGpsZ) {
+            if (useGpsZPos) {
                 accelBiasCorr.V.Z -= (posEstimator.gps.pos.V.Z - posEstimator.history.pos[gpsHistoryIndex].V.Z) * sq(posControl.navConfig->inav.w_z_gps_p);
+            }
+
+            if (useGpsZVel) {
                 accelBiasCorr.V.Z -= (posEstimator.gps.vel.V.Z - posEstimator.history.vel[gpsHistoryIndex].V.Z) * posControl.navConfig->inav.w_z_gps_v;
             }
+
         }
 
         /* accelerometer bias correction for baro */
@@ -559,7 +571,7 @@ static void updateEstimatedTopic(uint32_t currentTime)
     }
 
     /* Estimate Z-axis */
-    if ((posEstimator.est.epv < posControl.navConfig->inav.max_eph_epv) || useGpsZ || isBaroValid) {
+    if ((posEstimator.est.epv < posControl.navConfig->inav.max_eph_epv) || useGpsZPos || isBaroValid) {
         /* Predict position/velocity based on acceleration */
         inavFilterPredict(Z, dt, posEstimator.imu.accelNEU.V.Z);
 
@@ -576,12 +588,14 @@ static void updateEstimatedTopic(uint32_t currentTime)
 #endif
 
         /* Apply GPS correction to altitude */
-        if (useGpsZ) {
+        if (useGpsZPos) {
             inavFilterCorrectPos(Z, dt, posEstimator.gps.pos.V.Z - posEstimator.history.pos[gpsHistoryIndex].V.Z, posControl.navConfig->inav.w_z_gps_p);
-            inavFilterCorrectVel(Z, dt, posEstimator.gps.vel.V.Z - posEstimator.history.vel[gpsHistoryIndex].V.Z, posControl.navConfig->inav.w_z_gps_v);
-
-            /* Adjust EPV */
             posEstimator.est.epv = MIN(posEstimator.est.epv, posEstimator.gps.epv);
+        }
+
+        /* Apply GPS correction to climb rate */
+        if (useGpsZVel) {
+            inavFilterCorrectVel(Z, dt, posEstimator.gps.vel.V.Z - posEstimator.history.vel[gpsHistoryIndex].V.Z, posControl.navConfig->inav.w_z_gps_v);
         }
     }
     else {

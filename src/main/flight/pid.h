@@ -17,12 +17,6 @@
 
 #pragma once
 
-#include "rx/rx.h"
-
-#include "io/rc_controls.h"
-
-#include "config/runtime_config.h"
-
 #define GYRO_SATURATION_LIMIT   1800        // 1800dps
 #define PID_MAX_OUTPUT          1000
 #define YAW_P_LIMIT_MIN 100                 // Maximum value for yaw P limiter
@@ -32,6 +26,8 @@
 #define MAG_HOLD_RATE_LIMIT_MIN 10
 #define MAG_HOLD_RATE_LIMIT_MAX 250
 #define MAG_HOLD_RATE_LIMIT_DEFAULT 90
+
+#define AXIS_ACCEL_MIN_LIMIT    50
 
 typedef enum {
     PIDROLL,
@@ -60,10 +56,15 @@ typedef struct pidProfile_s {
     uint16_t yaw_p_limit;
     uint8_t yaw_lpf_hz;
 
+    uint16_t rollPitchItermIgnoreRate;      // Experimental threshold for ignoring iterm for pitch and roll on certain rates
+    uint16_t yawItermIgnoreRate;            // Experimental threshold for ignoring iterm for yaw on certain rates
+
+    uint32_t axisAccelerationLimitYaw;          // Max rate of change of yaw angular rate setpoint (deg/s^2 = dps/s)
+    uint32_t axisAccelerationLimitRollPitch;    // Max rate of change of roll/pitch angular rate setpoint (deg/s^2 = dps/s)
+
     int16_t max_angle_inclination[ANGLE_INDEX_COUNT];       // Max possible inclination (roll and pitch axis separately
 
-    uint8_t mag_hold_rate_limit;    //Maximum rotation rate MAG_HOLD mode cas feed to yaw rate PID controller
-
+    uint8_t mag_hold_rate_limit;            //Maximum rotation rate MAG_HOLD mode can feed to yaw rate PID controller
 } pidProfile_t;
 
 extern int16_t axisPID[];
@@ -71,8 +72,10 @@ extern int32_t axisPID_P[], axisPID_I[], axisPID_D[], axisPID_Setpoint[];
 
 void pidInit(void);
 void pidResetErrorAccumulators(void);
-void updatePIDCoefficients(const pidProfile_t *pidProfile, const controlRateConfig_t *controlRateConfig, const rxConfig_t *rxConfig);
-void pidController(const pidProfile_t *pidProfile, const controlRateConfig_t *controlRateConfig, const rxConfig_t *rxConfig);
+struct controlRateConfig_s;
+struct rxConfig_s;
+void updatePIDCoefficients(const pidProfile_t *pidProfile, const struct controlRateConfig_s *controlRateConfig, const struct rxConfig_s *rxConfig);
+void pidController(const pidProfile_t *pidProfile, const struct controlRateConfig_s *controlRateConfig, const struct rxConfig_s *rxConfig);
 
 float pidRateToRcCommand(float rateDPS, uint8_t rate);
 int16_t pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination);

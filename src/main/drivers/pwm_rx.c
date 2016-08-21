@@ -18,23 +18,22 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <stdlib.h>
-
-#include "platform.h"
-#include "build_config.h"
+#include <platform.h>
 
 #ifndef SKIP_RX_PWM_PPM
 
-#include "debug.h"
+#include "build/build_config.h"
+#include "build/debug.h"
 
 #include "common/utils.h"
 
 #include "system.h"
 
 #include "nvic.h"
-#include "gpio.h"
+#include "io.h"
 #include "timer.h"
 
+#include "pwm_output.h"
 #include "pwm_mapping.h"
 
 #include "pwm_rx.h"
@@ -340,12 +339,6 @@ static void pwmEdgeCallback(timerCCHandlerRec_t *cbRec, captureCompare_t capture
     }
 }
 
-static void pwmGPIOConfig(ioTag_t pin, ioConfig_t mode)
-{
-    IOInit(IOGetByTag(pin), OWNER_PWMINPUT, RESOURCE_INPUT);
-    IOConfigGPIO(IOGetByTag(pin), mode);
-}
-
 #ifdef USE_HAL_DRIVER
 
 void pwmICConfig(TIM_TypeDef *tim, uint8_t channel, uint16_t polarity)
@@ -400,7 +393,10 @@ void pwmInConfig(const timerHardware_t *timerHardwarePtr, uint8_t channel)
     self->mode = INPUT_MODE_PWM;
     self->timerHardware = timerHardwarePtr;
 
-    pwmGPIOConfig(timerHardwarePtr->tag, timerHardwarePtr->ioMode);
+    IO_t io = IOGetByTag(timerHardwarePtr->tag);
+    IOInit(io, OWNER_PWMINPUT, RESOURCE_INPUT, RESOURCE_INDEX(channel));
+    IOConfigGPIO(io, timerHardwarePtr->ioMode);
+
     pwmICConfig(timerHardwarePtr->tim, timerHardwarePtr->channel, TIM_ICPolarity_Rising);
 
     timerConfigure(timerHardwarePtr, (uint16_t)PWM_TIMER_PERIOD, PWM_TIMER_MHZ);
@@ -429,7 +425,10 @@ void ppmInConfig(const timerHardware_t *timerHardwarePtr)
     self->mode = INPUT_MODE_PPM;
     self->timerHardware = timerHardwarePtr;
 
-    pwmGPIOConfig(timerHardwarePtr->tag, timerHardwarePtr->ioMode);
+    IO_t io = IOGetByTag(timerHardwarePtr->tag);
+    IOInit(io, OWNER_PPMINPUT, RESOURCE_INPUT, 0);
+    IOConfigGPIO(io, timerHardwarePtr->ioMode);
+
     pwmICConfig(timerHardwarePtr->tim, timerHardwarePtr->channel, TIM_ICPolarity_Rising);
 
     timerConfigure(timerHardwarePtr, (uint16_t)PPM_TIMER_PERIOD, PWM_TIMER_MHZ);

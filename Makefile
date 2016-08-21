@@ -122,9 +122,9 @@ endif
 
 REVISION = $(shell git log -1 --format="%h")
 
-FC_VER_MAJOR := $(shell grep " FC_VERSION_MAJOR" src/main/version.h | awk '{print $$3}' )
-FC_VER_MINOR := $(shell grep " FC_VERSION_MINOR" src/main/version.h | awk '{print $$3}' )
-FC_VER_PATCH := $(shell grep " FC_VERSION_PATCH" src/main/version.h | awk '{print $$3}' )
+FC_VER_MAJOR := $(shell grep " FC_VERSION_MAJOR" src/main/build/version.h | awk '{print $$3}' )
+FC_VER_MINOR := $(shell grep " FC_VERSION_MINOR" src/main/build/version.h | awk '{print $$3}' )
+FC_VER_PATCH := $(shell grep " FC_VERSION_PATCH" src/main/build/version.h | awk '{print $$3}' )
 
 FC_VER := $(FC_VER_MAJOR).$(FC_VER_MINOR).$(FC_VER_PATCH)
 
@@ -422,24 +422,27 @@ INCLUDE_DIRS    := $(INCLUDE_DIRS) \
 VPATH           := $(VPATH):$(TARGET_DIR)
 
 COMMON_SRC = \
-            build_config.c \
-            debug.c \
-            version.c \
+            build/build_config.c \
+            build/debug.c \
+            build/version.c \
+            build/assert.c \
             $(TARGET_DIR_SRC) \
             main.c \
-            mw.c \
+            fc/mw.c \
             common/encoding.c \
             common/filter.c \
             common/maths.c \
             common/printf.c \
             common/typeconversion.c \
+            common/streambuf.c \
             config/config.c \
-            config/runtime_config.c \
+            fc/runtime_config.c \
             drivers/adc.c \
             drivers/buf_writer.c \
             drivers/bus_i2c_soft.c \
             drivers/bus_spi.c \
             drivers/bus_spi_soft.c \
+            drivers/exti.c \
             drivers/gps_i2cnav.c \
             drivers/gyro_sync.c \
             drivers/io.c \
@@ -461,8 +464,8 @@ COMMON_SRC = \
             flight/mixer.c \
             flight/pid.c \
             io/beeper.c \
-            io/rc_controls.c \
-            io/rc_curves.c \
+            fc/rc_controls.c \
+            fc/rc_curves.c \
             io/serial.c \
             io/serial_4way.c \
             io/serial_4way_avrootloader.c \
@@ -471,13 +474,14 @@ COMMON_SRC = \
             io/serial_msp.c \
             io/statusindicator.c \
             rx/ibus.c \
+            rx/jetiexbus.c \
             rx/msp.c \
             rx/nrf24.c \
             rx/nrf24_cx10.c \
+            rx/nrf24_inav.c \
+            rx/nrf24_h8_3d.c \
             rx/nrf24_syma.c \
             rx/nrf24_v202.c \
-            rx/nrf24_h8_3d.c \
-            rx/nrf24_ref.c \
             rx/pwm.c \
             rx/rx.c \
             rx/sbus.c \
@@ -520,8 +524,9 @@ HIGHEND_SRC = \
             telemetry/frsky.c \
             telemetry/hott.c \
             telemetry/smartport.c \
-		    telemetry/mavlink.c \
-            telemetry/ltm.c
+            telemetry/mavlink.c \
+            telemetry/ltm.c \
+            telemetry/nrf24_ltm.c
 
 ifeq ($(TARGET),$(filter $(TARGET),$(F4_TARGETS)))
 VCP_SRC = \
@@ -546,13 +551,15 @@ VCP_SRC = \
             vcp/usb_istr.c \
             vcp/usb_prop.c \
             vcp/usb_pwr.c \
-            drivers/serial_usb_vcp.c
+            drivers/serial_usb_vcp.c \
+            drivers/usb_io.c
 endif
 
 STM32F10x_COMMON_SRC = \
             startup_stm32f10x_md_gcc.S \
             drivers/adc_stm32f10x.c \
             drivers/bus_i2c_stm32f10x.c \
+            drivers/dma.c \
             drivers/gpio_stm32f10x.c \
             drivers/inverter.c \
             drivers/serial_softserial.c \
@@ -565,8 +572,8 @@ STM32F30x_COMMON_SRC = \
             target/system_stm32f30x.c \
             drivers/adc_stm32f30x.c \
             drivers/bus_i2c_stm32f30x.c \
+            drivers/dma.c \
             drivers/gpio_stm32f30x.c \
-            drivers/light_ws2811strip.c \
             drivers/light_ws2811strip_stm32f30x.c \
             drivers/serial_uart_stm32f30x.c \
             drivers/system_stm32f30x.c \
@@ -705,6 +712,7 @@ ASFLAGS     = $(ARCH_FLAGS) \
               -MMD -MP
 
 LDFLAGS     = -lm \
+              -nostartfiles \
               --specs=nano.specs \
               -lc \
               -lnosys \
@@ -715,6 +723,7 @@ LDFLAGS     = -lm \
               -Wl,-gc-sections,-Map,$(TARGET_MAP) \
               -Wl,-L$(LINKER_DIR) \
               -Wl,--cref \
+              -Wl,--no-wchar-size-warning \
               -T$(LD_SCRIPT)
 
 ###############################################################################

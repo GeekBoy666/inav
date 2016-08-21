@@ -2,7 +2,9 @@
 
 ![INAV](http://static.rcgroups.net/forums/attachments/6/1/0/3/7/6/a9088858-102-inav.png)
 
-Clean-code version of baseflight flight-controller - flight controllers are used to fly multi-rotor craft and fixed wing craft.
+[![Join the chat at https://gitter.im/iNavFlight/inav](https://badges.gitter.im/iNavFlight/inav.svg)](https://gitter.im/iNavFlight/inav?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) ![Travis CI status](https://travis-ci.org/iNavFlight/inav.svg?branch=master)
+
+Clean-code version of baseflight flight-controller with improved navigational capabilities - flight controllers are used to fly multi-rotor craft and fixed wing craft.
 
 ## Important: PID values and scaling
 
@@ -11,6 +13,7 @@ Starting at 22-06-2016 INAV uses the same scaling for PIDs as Cleanflight/Betafl
 * PIDs from CF/BF can be used in INAV, no need to retune for INAV
 * INAV uses the same PID defaults that Cleanflight and Betaflight
 * Current INAV tunes can be converted to new using [this guide](https://github.com/iNavFlight/inav/wiki/PID-conversion-from-pre-1.2-to-1.2). This applies to all INAV 1.1
+* [Conversion spreadsheet](https://docs.google.com/spreadsheets/d/133vfzz6_38W5nUmoRNuP7ZX9V1E-8IG6x0FxuxkBuQg/edit?usp=sharing)
 
 ## Features
 
@@ -41,47 +44,40 @@ Starting at 22-06-2016 INAV uses the same scaling for PIDs as Cleanflight/Betafl
 * Configurable serial ports for Serial RX, Telemetry, MSP, GPS - Use most devices on any port, softserial too.
 * And many more minor bug fixes.
 
-For a list of features, changes and some discussion please review the thread on MultiWii forums and consult the documentation.
+For a list of features, changes and some discussion please review the thread on RCGroups forums and consult the documentation.
 
-http://www.multiwii.com/forum/viewtopic.php?f=23&t=5149
+http://www.rcgroups.com/forums/showthread.php?t=2495732
 
 ## Installation
 
-See: https://github.com/cleanflight/cleanflight/blob/master/docs/Installation.md
+See: https://github.com/iNavFlight/inav/blob/master/docs/Installation.md
 
 ## Documentation
 
-There is lots of documentation here: https://github.com/cleanflight/cleanflight/tree/master/docs
+There is lots of documentation here: https://github.com/iNavFlight/inav/tree/master/docs
 
-If what you need is not covered then refer to the baseflight documentation. If you still can't find what you need then visit the #cleanflight on the Freenode IRC network
+If what you need is not covered then refer to the [Cleanflight documentation](https://github.com/cleanflight/cleanflight/tree/master/docs). If you still can't find what you need then visit the Gitter room or the IRC Channel at #inavflight
 
-## IRC Support and Developers Channel
+## Gitter Support and Developers Channel
 
-There's a dedicated IRC channel here:
+There's a dedicated Gitter room here:
+https://gitter.im/iNavFlight/inav
 
-irc://irc.freenode.net/#cleanflight
+There's a dedicated INAV IRC channel on the Freenode IRC network. Users and some of the developers are there, and it is a helpful and friendly community - but there are two important things to keep in mind: First and most importantly, please go ahead and ask if you have questions, but make sure you wait around long enough for a reply. Next, sometimes people are out flying, asleep or at work and can't answer immediately, even though they are present in the channel. This is how IRC works: Many people stay logged in, even though they are not actively participating in the discussion all the time. Have a seat, grab a drink and hang around if it's a quiet time of day.
 
-If you are using windows and don't have an IRC client installed then take a look at HydraIRC - here: http://hydrairc.com/
-
-Etiquette: Don't ask to ask and please wait around long enough for a reply - sometimes people are out flying, asleep or at work and can't answer immediately.
-
-## Videos
-
-There is a dedicated INAV youtube channel which has progress update videos, flight demonstrations, instructions and other related videos.
-
-https://www.youtube.com/playlist?list=PL6H1fAj_XUNVBEcp8vbMH2DrllZAGWkt8
-
-Please subscribe and '+1' the videos if you find them useful.
+irc://irc.freenode.net/#inavflight
 
 ## Configuration Tool
 
-To configure INAV you should use the INAV-configurator GUI tool (Windows/OSX/Linux) that can be found here:
+To configure INAV you should use the INAV-configurator GUI tool (Windows/OSX/Linux).
+[//]: # (Can be found here: https://chrome.google.com/webstore/detail/inav-configurator/)
+Currently you have to download the sourcecode and load into Chrome manually from the github page 
 
+https://github.com/iNavFlight/inav-configurator
+
+If you rather just want to use Cleanflight configurator you can download from here:
 https://chrome.google.com/webstore/detail/cleanflight-configurator/enacoimjcgeinfnnnpajinjgmkahmfgb
 
-The source for it is here:
-
-https://github.com/cleanflight/cleanflight-configurator
 
 ## Contributing
 
@@ -95,20 +91,16 @@ Contributions are welcome and encouraged.  You can contribute in many ways:
 
 The best place to start is the IRC channel on freenode (see above), drop in, say hi. Next place is the github issue tracker:
 
-https://github.com/cleanflight/cleanflight/issues
-https://github.com/cleanflight/cleanflight-configurator/issues
+https://github.com/iNavFlight/inav/issues
+
+https://github.com/iNavFlight/inav-configurator/issues
 
 Before creating new issues please check to see if there is an existing one, search first otherwise you waste peoples time when they could be coding instead!
 
 ## Developers
 
-Please refer to the development section in the [docs/development](https://github.com/cleanflight/cleanflight/tree/master/docs/development) folder.
+Please refer to the development section in the [docs/development](https://github.com/iNavFlight/inav/tree/master/docs/development) folder.
 
-TravisCI is used to run automatic builds
-
-https://travis-ci.org/cleanflight/cleanflight
-
-[![Build Status](https://travis-ci.org/cleanflight/cleanflight.svg?branch=master)](https://travis-ci.org/cleanflight/cleanflight)
 
 ## INAV Releases
-https://github.com/cleanflight/cleanflight/releases
+https://github.com/iNavFlight/inav/releases

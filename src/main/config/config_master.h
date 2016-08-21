@@ -27,7 +27,6 @@ typedef struct master_t {
     uint32_t enabledFeatures;
     uint8_t persistentFlags;
     uint16_t looptime;                      // imu loop time in us
-    uint8_t emf_avoidance;                   // change pll settings to avoid noise in the uhf band
     uint8_t i2c_overclock;                  // Overclock i2c Bus for faster IMU readings
     uint8_t gyroSync;                       // Enable interrupt based loop
     uint8_t gyroSyncDenominator;            // Gyro sync Denominator
@@ -92,11 +91,17 @@ typedef struct master_t {
 
     serialConfig_t serialConfig;
 
+#ifdef TELEMETRY
     telemetryConfig_t telemetryConfig;
+#endif
+
 
 #ifdef LED_STRIP
-    ledConfig_t ledConfigs[MAX_LED_STRIP_LENGTH];
-    hsvColor_t colors[CONFIGURABLE_COLOR_COUNT];
+    ledConfig_t ledConfigs[LED_MAX_STRIP_LENGTH];
+    hsvColor_t colors[LED_CONFIGURABLE_COLOR_COUNT];
+    modeColorIndexes_t modeColors[LED_MODE_COUNT];
+    specialColorIndexes_t specialColors;
+    uint8_t ledstrip_visual_beeper; // suppress LEDLOW mode if beeper is on
 #endif
 
     profile_t profile[MAX_PROFILE_COUNT];
@@ -110,7 +115,7 @@ typedef struct master_t {
 #endif
 
     uint32_t beeper_off_flags;
-    uint32_t prefered_beeper_off_flags;
+    uint32_t preferred_beeper_off_flags;
 
     uint8_t magic_ef;                       // magic number, should be 0xEF
     uint8_t chk;                            // XOR checksum

@@ -45,7 +45,9 @@
 #include "sensors/battery.h"
 
 #include "io/serial.h"
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+#include "fc/runtime_config.h"
+
 #include "io/gps.h"
 
 #include "rx/rx.h"
@@ -55,7 +57,6 @@
 #include "flight/imu.h"
 #include "flight/navigation_rewrite.h"
 
-#include "config/runtime_config.h"
 #include "config/config.h"
 
 #include "telemetry/telemetry.h"
@@ -307,7 +308,7 @@ static void sendFakeLatLong(void)
 {
     // Heading is only displayed on OpenTX if non-zero lat/long is also sent
     int32_t coord[2] = {0,0};
-    
+
     coord[LAT] = (telemetryConfig->gpsNoFixLatitude * GPS_DEGREES_DIVIDER);
     coord[LON] = (telemetryConfig->gpsNoFixLongitude * GPS_DEGREES_DIVIDER);
 

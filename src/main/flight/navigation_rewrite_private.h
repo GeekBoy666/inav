@@ -21,7 +21,7 @@
 
 #if defined(NAV)
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
 
 #define MIN_POSITION_UPDATE_RATE_HZ         5       // Minimum position update rate at which XYZ controllers would be applied
 #define NAV_THROTTLE_CUTOFF_FREQENCY_HZ     4       // low-pass filter on throttle output
@@ -74,6 +74,7 @@ typedef struct navigationFlags_s {
 
     // Behaviour modifiers
     bool isGCSAssistedNavigationEnabled;    // Does iNav accept WP#255 - follow-me etc.
+    bool isGCSAssistedNavigationReset;      // GCS control was disabled - indicate that so code could take action accordingly
     bool isTerrainFollowEnabled;            // Does iNav use sonar for terrain following (adjusting baro altitude target according to sonar readings)
 
     bool forcedRTHActivated;
@@ -138,10 +139,6 @@ typedef enum {
     NAV_FSM_EVENT_SUCCESS,
     NAV_FSM_EVENT_ERROR,
 
-    NAV_FSM_EVENT_STATE_SPECIFIC,               // State-specific event
-    NAV_FSM_EVENT_SWITCH_TO_WAYPOINT_FINISHED = NAV_FSM_EVENT_STATE_SPECIFIC,
-    NAV_FSM_EVENT_SWITCH_TO_RTH_3D_LANDING = NAV_FSM_EVENT_STATE_SPECIFIC,
-
     NAV_FSM_EVENT_SWITCH_TO_IDLE,
     NAV_FSM_EVENT_SWITCH_TO_ALTHOLD,
     NAV_FSM_EVENT_SWITCH_TO_POSHOLD_2D,
@@ -151,6 +148,12 @@ typedef enum {
     NAV_FSM_EVENT_SWITCH_TO_RTH_3D,
     NAV_FSM_EVENT_SWITCH_TO_WAYPOINT,
     NAV_FSM_EVENT_SWITCH_TO_EMERGENCY_LANDING,
+
+    NAV_FSM_EVENT_STATE_SPECIFIC_1,             // State-specific event
+    NAV_FSM_EVENT_STATE_SPECIFIC_2,             // State-specific event
+    NAV_FSM_EVENT_SWITCH_TO_RTH_3D_LANDING = NAV_FSM_EVENT_STATE_SPECIFIC_1,
+    NAV_FSM_EVENT_SWITCH_TO_WAYPOINT_RTH_LAND = NAV_FSM_EVENT_STATE_SPECIFIC_1,
+    NAV_FSM_EVENT_SWITCH_TO_WAYPOINT_FINISHED = NAV_FSM_EVENT_STATE_SPECIFIC_2,
 
     NAV_FSM_EVENT_COUNT,
 } navigationFSMEvent_t;
@@ -190,11 +193,13 @@ typedef enum {
     NAV_STATE_WAYPOINT_PRE_ACTION,              // 23
     NAV_STATE_WAYPOINT_IN_PROGRESS,             // 24
     NAV_STATE_WAYPOINT_REACHED,                 // 25
-    NAV_STATE_WAYPOINT_FINISHED,                // 26
+    NAV_STATE_WAYPOINT_NEXT,                    // 26
+    NAV_STATE_WAYPOINT_FINISHED,                // 27
+    NAV_STATE_WAYPOINT_RTH_LAND,                // 28
 
-    NAV_STATE_EMERGENCY_LANDING_INITIALIZE,     // 27
-    NAV_STATE_EMERGENCY_LANDING_IN_PROGRESS,    // 28
-    NAV_STATE_EMERGENCY_LANDING_FINISHED,       // 29
+    NAV_STATE_EMERGENCY_LANDING_INITIALIZE,
+    NAV_STATE_EMERGENCY_LANDING_IN_PROGRESS,
+    NAV_STATE_EMERGENCY_LANDING_FINISHED,
 
     NAV_STATE_COUNT,
 } navigationFSMState_t;

@@ -17,12 +17,11 @@
 
 #pragma once
 
-#include "io.h"
-#include "rcc.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-#if !defined(USABLE_TIMER_CHANNEL_COUNT)
-#define USABLE_TIMER_CHANNEL_COUNT 14
-#endif
+#include "io_types.h"
+#include "rcc_types.h"
 
 typedef uint16_t captureCompare_t;        // 16 bit on both 103 and 303, just register access must be 32bit sometimes (use timCCR_t)
 
@@ -74,6 +73,9 @@ typedef struct timerOvrHandlerRec_s {
 typedef struct timerDef_s {
     TIM_TypeDef *TIMx;
     rccPeriphTag_t rcc;
+#if defined(STM32F3) || defined(STM32F4)
+    uint8_t alternateFunction;
+#endif
 } timerDef_t;
 
 typedef struct timerHardware_s {
@@ -87,8 +89,12 @@ typedef struct timerHardware_s {
     uint8_t alternateFunction;
 #endif
 } timerHardware_t;
-enum {TIMER_OUTPUT_ENABLED = 0x01, TIMER_OUTPUT_INVERTED = 0x02};
 
+enum {
+    TIMER_OUTPUT_ENABLED = 0x01,
+    TIMER_OUTPUT_INVERTED = 0x02,
+    TIMER_OUTPUT_N_CHANNEL= 0x04
+};
 
 #ifdef STM32F1
 #if defined(STM32F10X_XL) || defined(STM32F10X_HD_VL)
@@ -144,7 +150,7 @@ void timerChConfigGPIO(const timerHardware_t* timHw, ioConfig_t mode);
 void timerChCCHandlerInit(timerCCHandlerRec_t *self, timerCCHandlerCallback *fn);
 void timerChOvrHandlerInit(timerOvrHandlerRec_t *self, timerOvrHandlerCallback *fn);
 void timerChConfigCallbacks(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallback, timerOvrHandlerRec_t *overflowCallback);
-//void timerChConfigCallbacksDual(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallbackLo, timerCCHandlerRec_t *edgeCallbackHi, timerOvrHandlerRec_t *overflowCallback);
+void timerChConfigCallbacksDual(const timerHardware_t *channel, timerCCHandlerRec_t *edgeCallbackLo, timerCCHandlerRec_t *edgeCallbackHi, timerOvrHandlerRec_t *overflowCallback);
 void timerChITConfigDualLo(const timerHardware_t* timHw, FunctionalState newState);
 void timerChITConfig(const timerHardware_t* timHw, FunctionalState newState);
 void timerChClearCCFlag(const timerHardware_t* timHw);
@@ -157,3 +163,8 @@ void timerForceOverflow(TIM_TypeDef *tim);
 
 void configTimeBase(TIM_TypeDef *tim, uint16_t period, uint8_t mhz);  // TODO - just for migration
 
+rccPeriphTag_t timerRCC(TIM_TypeDef *tim);
+
+#if defined(STM32F3) || defined(STM32F4)
+uint8_t timerGPIOAF(TIM_TypeDef *tim);
+#endif

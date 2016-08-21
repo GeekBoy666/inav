@@ -21,16 +21,24 @@
 
 #include "platform.h"
 
+#include "build/atomic.h"
+#include "build/build_config.h"
+#include "build/assert.h"
+#include "build/debug.h"
+
 #include "common/axis.h"
 #include "common/color.h"
-#include "common/atomic.h"
 #include "common/maths.h"
+#include "common/printf.h"
 
 #include "drivers/nvic.h"
 
 #include "drivers/sensor.h"
 #include "drivers/system.h"
+#include "drivers/dma.h"
+#include "drivers/exti.h"
 #include "drivers/gpio.h"
+#include "drivers/io.h"
 #include "drivers/light_led.h"
 #include "drivers/sound_beeper.h"
 #include "drivers/timer.h"
@@ -41,25 +49,34 @@
 #include "drivers/compass.h"
 #include "drivers/pwm_mapping.h"
 #include "drivers/pwm_rx.h"
+#include "drivers/pwm_output.h"
 #include "drivers/adc.h"
 #include "drivers/bus_i2c.h"
 #include "drivers/bus_spi.h"
 #include "drivers/inverter.h"
 #include "drivers/flash_m25p16.h"
 #include "drivers/sonar_hcsr04.h"
+#include "drivers/sdcard.h"
 #include "drivers/gyro_sync.h"
+#include "drivers/io.h"
+#include "drivers/exti.h"
 
 #include "rx/rx.h"
+#include "rx/spektrum.h"
 
 #include "io/beeper.h"
 #include "io/serial.h"
 #include "io/flashfs.h"
 #include "io/gps.h"
 #include "io/escservo.h"
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+
 #include "io/gimbal.h"
 #include "io/ledstrip.h"
 #include "io/display.h"
+#include "io/asyncfatfs/asyncfatfs.h"
+#include "io/serial_msp.h"
+#include "io/serial_cli.h"
 
 #include "scheduler/scheduler.h"
 
@@ -71,6 +88,7 @@
 #include "sensors/battery.h"
 #include "sensors/boardalignment.h"
 #include "sensors/initialisation.h"
+#include "sensors/sonar.h"
 
 #include "telemetry/telemetry.h"
 #include "blackbox/blackbox.h"
@@ -81,7 +99,8 @@
 #include "flight/failsafe.h"
 #include "flight/navigation_rewrite.h"
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
 #include "config/config.h"
 #include "config/config_profile.h"
 #include "config/config_master.h"
@@ -90,45 +109,10 @@
 #include "hardware_revision.h"
 #endif
 
-#include "build_config.h"
-#include "debug.h"
-
 extern uint8_t motorControlEnable;
 
 #ifdef SOFTSERIAL_LOOPBACK
 serialPort_t *loopbackPort;
-#endif
-
-void printfSupportInit(void);
-void timerInit(void);
-void telemetryInit(void);
-void serialInit(serialConfig_t *initialSerialConfig, bool softserialEnabled);
-void mspInit();
-void cliInit(serialConfig_t *serialConfig);
-void failsafeInit(rxConfig_t *intialRxConfig, uint16_t deadband3d_throttle);
-pwmIOConfiguration_t *pwmInit(drv_pwm_config_t *init);
-#ifdef USE_SERVOS
-void mixerInit(mixerMode_e mixerMode, motorMixer_t *customMotorMixers, servoMixer_t *customServoMixers);
-#else
-void mixerInit(mixerMode_e mixerMode, motorMixer_t *customMotorMixers);
-#endif
-void mixerUsePWMIOConfiguration(void);
-void rxInit(rxConfig_t *rxConfig, modeActivationCondition_t *modeActivationConditions);
-void gpsPreInit(gpsConfig_t *initialGpsConfig);
-void gpsInit(serialConfig_t *serialConfig, gpsConfig_t *initialGpsConfig);
-void imuInit(void);
-void displayInit(rxConfig_t *intialRxConfig);
-void ledStripInit(ledConfig_t *ledConfigsToUse, hsvColor_t *colorsToUse);
-void spektrumBind(rxConfig_t *rxConfig);
-const sonarHcsr04Hardware_t *sonarGetHardwareConfiguration(currentSensor_e currentSensor);
-
-#ifdef STM32F303xC
-// from system_stm32f30x.c
-void SetSysClock(void);
-#endif
-#ifdef STM32F10X
-// from system_stm32f10x.c
-void SetSysClock(bool overclock);
 #endif
 
 typedef enum {
@@ -136,6 +120,7 @@ typedef enum {
     SYSTEM_STATE_CONFIG_LOADED  = (1 << 0),
     SYSTEM_STATE_SENSORS_READY  = (1 << 1),
     SYSTEM_STATE_MOTORS_READY   = (1 << 2),
+    SYSTEM_STATE_TRANSPONDER_ENABLED = (1 << 3),
     SYSTEM_STATE_READY          = (1 << 7)
 } systemState_e;
 
@@ -149,7 +134,7 @@ void flashLedsAndBeep(void)
         LED1_TOGGLE;
         LED0_TOGGLE;
         delay(25);
-        if (!(getPreferedBeeperOffMask() & (1 << (BEEPER_SYSTEM_INIT - 1))))
+        if (!(getPreferredBeeperOffMask() & (1 << (BEEPER_SYSTEM_INIT - 1))))
             BEEP_ON;
         delay(25);
         BEEP_OFF;
@@ -168,7 +153,6 @@ void init(void)
 #endif
     printfSupportInit();
 
-    
     initEEPROM();
 
     ensureEEPROMContainsValidData();
@@ -176,29 +160,16 @@ void init(void)
 
     systemState |= SYSTEM_STATE_CONFIG_LOADED;
 
+    systemInit();
+
+    i2cSetOverclock(masterConfig.i2c_overclock);
+
     // initialize IO (needed for all IO operations)
     IOInitGlobal();
-
-#ifdef STM32F303
-    // start fpu
-    SCB->CPACR = (0x3 << (10*2)) | (0x3 << (11*2));
-#endif
-
-#ifdef STM32F303xC
-    SetSysClock();
-#endif
-#ifdef STM32F10X
-    // Configure the System clock frequency, HCLK, PCLK2 and PCLK1 prescalers
-    // Configure the Flash Latency cycles and enable prefetch buffer
-    SetSysClock(masterConfig.emf_avoidance);
-#endif
-    i2cSetOverclock(masterConfig.i2c_overclock);
 
 #ifdef USE_HARDWARE_REVISION_DETECTION
     detectHardwareRevision();
 #endif
-
-    systemInit();
 
     // Latch active features to be used for feature() in the remainder of init().
     latchActiveFeatures();
@@ -207,6 +178,10 @@ void init(void)
     ledInit(hardwareRevision == AFF3_REV_1 ? false : true);
 #else
     ledInit(false);
+#endif
+
+#ifdef USE_EXTI
+    EXTIInit();
 #endif
 
 #ifdef SPEKTRUM_BIND
@@ -227,7 +202,17 @@ void init(void)
 
     timerInit();  // timer must be initialized before any channel is allocated
 
-    serialInit(&masterConfig.serialConfig, feature(FEATURE_SOFTSERIAL));
+    dmaInit();
+
+#if defined(AVOID_UART2_FOR_PWM_PPM)
+    serialInit(&masterConfig.serialConfig, feature(FEATURE_SOFTSERIAL),
+            feature(FEATURE_RX_PPM) || feature(FEATURE_RX_PARALLEL_PWM) ? SERIAL_PORT_USART2 : SERIAL_PORT_NONE);
+#elif defined(AVOID_UART3_FOR_PWM_PPM)
+    serialInit(&masterConfig.serialConfig, feature(FEATURE_SOFTSERIAL),
+            feature(FEATURE_RX_PPM) || feature(FEATURE_RX_PARALLEL_PWM) ? SERIAL_PORT_USART3 : SERIAL_PORT_NONE);
+#else
+    serialInit(&masterConfig.serialConfig, feature(FEATURE_SOFTSERIAL), SERIAL_PORT_NONE);
+#endif
 
 #ifdef USE_SERVOS
     mixerInit(masterConfig.mixerMode, masterConfig.customMotorMixer, masterConfig.customServoMixer);
@@ -239,15 +224,12 @@ void init(void)
     memset(&pwm_params, 0, sizeof(pwm_params));
 
 #ifdef SONAR
-    sonarGPIOConfig_t sonarGPIOConfig;
     if (feature(FEATURE_SONAR)) {
         const sonarHcsr04Hardware_t *sonarHardware = sonarGetHardwareConfiguration(masterConfig.batteryConfig.currentMeterType);
         if (sonarHardware) {
-            sonarGPIOConfig.gpio = sonarHardware->echo_gpio;
-            sonarGPIOConfig.triggerPin = sonarHardware->echo_pin;
-            sonarGPIOConfig.echoPin = sonarHardware->trigger_pin;
-            pwm_params.sonarGPIOConfig = &sonarGPIOConfig;
             pwm_params.useSonar = true;
+            pwm_params.sonarIOConfig.triggerTag = sonarHardware->triggerTag;
+            pwm_params.sonarIOConfig.echoTag = sonarHardware->echoTag;
         }
     }
 #endif
@@ -257,11 +239,17 @@ void init(void)
         pwm_params.airplane = true;
     else
         pwm_params.airplane = false;
-#if defined(USE_USART2) && defined(STM32F10X)
+#if defined(USE_UART2) && defined(STM32F10X)
     pwm_params.useUART2 = doesConfigurationUsePort(SERIAL_PORT_USART2);
 #endif
 #ifdef STM32F303xC
     pwm_params.useUART3 = doesConfigurationUsePort(SERIAL_PORT_USART3);
+#endif
+#if defined(USE_UART2) && defined(STM32F40_41xxx)
+    pwm_params.useUART2 = doesConfigurationUsePort(SERIAL_PORT_USART2);
+#endif
+#if defined(USE_UART6) && defined(STM32F40_41xxx)
+    pwm_params.useUART6 = doesConfigurationUsePort(SERIAL_PORT_USART6);
 #endif
     pwm_params.useVbat = feature(FEATURE_VBAT);
     pwm_params.useSoftSerial = feature(FEATURE_SOFTSERIAL);
@@ -330,16 +318,21 @@ void init(void)
 
 
 #ifdef USE_SPI
-#ifdef USE_HAL_DRIVER
+#ifdef USE_SPI_DEVICE_1
     spiInit(SPIDEV_1);
-    spiInit(SPIDEV_2);
-    spiInit(SPIDEV_3);
-#else
-    spiInit(SPI1);
-    spiInit(SPI2);
-    spiInit(SPI3);
 #endif
-
+#ifdef USE_SPI_DEVICE_2
+    spiInit(SPIDEV_2);
+#endif
+#ifdef USE_SPI_DEVICE_3
+#ifdef ALIENFLIGHTF3
+    if (hardwareRevision == AFF3_REV_2) {
+        spiInit(SPIDEV_3);
+    }
+#else
+    spiInit(SPIDEV_3);
+#endif
+#endif
 #endif
 
 #ifdef USE_HARDWARE_REVISION_DETECTION
@@ -354,15 +347,17 @@ void init(void)
     }
 #endif
 
-#if defined(SPRACINGF3) && defined(SONAR) && defined(USE_SOFTSERIAL2)
-    if (feature(FEATURE_SONAR) && feature(FEATURE_SOFTSERIAL)) {
-        serialRemovePort(SERIAL_PORT_SOFTSERIAL2);
-    }
-#endif
-
-#if defined(FURYF3) && defined(SONAR) && defined(USE_SOFTSERIAL1)
+#if defined(SONAR) && defined(USE_SOFTSERIAL1)
+#if defined(FURYF3) || defined(OMNIBUS) || defined(SPRACINGF3MINI)
     if (feature(FEATURE_SONAR) && feature(FEATURE_SOFTSERIAL)) {
         serialRemovePort(SERIAL_PORT_SOFTSERIAL1);
+    }
+#endif
+#endif
+
+#if defined(SONAR) && defined(USE_SOFTSERIAL2) && defined(SPRACINGF3)
+    if (feature(FEATURE_SONAR) && feature(FEATURE_SOFTSERIAL)) {
+        serialRemovePort(SERIAL_PORT_SOFTSERIAL2);
     }
 #endif
 
@@ -402,6 +397,7 @@ void init(void)
     adcInit(&adc_params);
 #endif
 
+
     initBoardAlignment(&masterConfig.boardAlignment);
 
 #ifdef DISPLAY
@@ -432,20 +428,7 @@ void init(void)
 
     systemState |= SYSTEM_STATE_SENSORS_READY;
 
-    LED1_ON;
-    LED0_OFF;
-    for (int i = 0; i < 10; i++) {
-        LED0_TOGGLE;
-        LED1_TOGGLE;
-        LED2_TOGGLE;
-        delay(25);
-        BEEP_ON;
-        delay(25);
-        BEEP_OFF;
-    }
-    LED0_OFF;
-    LED1_OFF;
-    LED2_OFF;
+    flashLedsAndBeep();
 
 #ifdef MAG
     if (sensors(SENSOR_MAG))
@@ -454,7 +437,7 @@ void init(void)
 
     imuInit();
 
-    mspInit(&masterConfig.serialConfig);
+    mspInit();
 
 #ifdef USE_CLI
     cliInit(&masterConfig.serialConfig);
@@ -485,10 +468,10 @@ void init(void)
 #endif
 
 #ifdef LED_STRIP
-    ledStripInit(masterConfig.ledConfigs, masterConfig.colors);
+    ledStripInit(masterConfig.ledConfigs, masterConfig.colors, masterConfig.modeColors, &masterConfig.specialColors);
 
     if (feature(FEATURE_LED_STRIP)) {
-            ledStripEnable();
+        ledStripEnable();
     }
 #endif
 
@@ -501,13 +484,38 @@ void init(void)
 #ifdef USE_FLASHFS
 #ifdef NAZE
     if (hardwareRevision == NAZE32_REV5) {
-        m25p16_init();
+        m25p16_init(IOTAG_NONE);
     }
 #elif defined(USE_FLASH_M25P16)
-    m25p16_init();
+    m25p16_init(IOTAG_NONE);
 #endif
 
     flashfsInit();
+#endif
+
+#ifdef USE_SDCARD
+    bool sdcardUseDMA = false;
+
+    sdcardInsertionDetectInit();
+
+#ifdef SDCARD_DMA_CHANNEL_TX
+
+#if defined(LED_STRIP) && defined(WS2811_DMA_CHANNEL)
+    // Ensure the SPI Tx DMA doesn't overlap with the led strip
+#ifdef STM32F4
+    sdcardUseDMA = !feature(FEATURE_LED_STRIP) || SDCARD_DMA_CHANNEL_TX != WS2811_DMA_STREAM;
+#else
+    sdcardUseDMA = !feature(FEATURE_LED_STRIP) || SDCARD_DMA_CHANNEL_TX != WS2811_DMA_CHANNEL;
+#endif
+#else
+    sdcardUseDMA = true;
+#endif
+
+#endif
+
+    sdcard_init(sdcardUseDMA);
+
+    afatfs_init();
 #endif
 
 #ifdef BLACKBOX
@@ -586,6 +594,10 @@ int main(void)
 #endif
 #ifdef MAG
     setTaskEnabled(TASK_COMPASS, sensors(SENSOR_MAG));
+#if defined(MPU6500_SPI_INSTANCE) && defined(USE_MAG_AK8963)
+    // fixme temporary solution for AK6983 via slave I2C on MPU9250
+    rescheduleTask(TASK_COMPASS, 1000000 / 40);
+#endif
 #endif
 #ifdef BARO
     setTaskEnabled(TASK_BARO, sensors(SENSOR_BARO));
@@ -609,12 +621,88 @@ int main(void)
     }
 }
 
+#ifdef DEBUG_HARDFAULTS
+
+//from: https://mcuoneclipse.com/2012/11/24/debugging-hard-faults-on-arm-cortex-m/
+/**
+ * hard_fault_handler_c:
+ * This is called from the HardFault_HandlerAsm with a pointer the Fault stack
+ * as the parameter. We can then read the values from the stack and place them
+ * into local variables for ease of reading.
+ * We then read the various Fault Status and Address Registers to help decode
+ * cause of the fault.
+ * The function ends with a BKPT instruction to force control back into the debugger
+ */
+void hard_fault_handler_c(unsigned long *hardfault_args)
+{
+  volatile unsigned long stacked_r0 ;
+  volatile unsigned long stacked_r1 ;
+  volatile unsigned long stacked_r2 ;
+  volatile unsigned long stacked_r3 ;
+  volatile unsigned long stacked_r12 ;
+  volatile unsigned long stacked_lr ;
+  volatile unsigned long stacked_pc ;
+  volatile unsigned long stacked_psr ;
+  volatile unsigned long _CFSR ;
+  volatile unsigned long _HFSR ;
+  volatile unsigned long _DFSR ;
+  volatile unsigned long _AFSR ;
+  volatile unsigned long _BFAR ;
+  volatile unsigned long _MMAR ;
+
+  stacked_r0 = ((unsigned long)hardfault_args[0]) ;
+  stacked_r1 = ((unsigned long)hardfault_args[1]) ;
+  stacked_r2 = ((unsigned long)hardfault_args[2]) ;
+  stacked_r3 = ((unsigned long)hardfault_args[3]) ;
+  stacked_r12 = ((unsigned long)hardfault_args[4]) ;
+  stacked_lr = ((unsigned long)hardfault_args[5]) ;
+  stacked_pc = ((unsigned long)hardfault_args[6]) ;
+  stacked_psr = ((unsigned long)hardfault_args[7]) ;
+
+  // Configurable Fault Status Register
+  // Consists of MMSR, BFSR and UFSR
+  _CFSR = (*((volatile unsigned long *)(0xE000ED28))) ;
+
+  // Hard Fault Status Register
+  _HFSR = (*((volatile unsigned long *)(0xE000ED2C))) ;
+
+  // Debug Fault Status Register
+  _DFSR = (*((volatile unsigned long *)(0xE000ED30))) ;
+
+  // Auxiliary Fault Status Register
+  _AFSR = (*((volatile unsigned long *)(0xE000ED3C))) ;
+
+  // Read the Fault Address Registers. These may not contain valid values.
+  // Check BFARVALID/MMARVALID to see if they are valid values
+  // MemManage Fault Address Register
+  _MMAR = (*((volatile unsigned long *)(0xE000ED34))) ;
+  // Bus Fault Address Register
+  _BFAR = (*((volatile unsigned long *)(0xE000ED38))) ;
+
+  __asm("BKPT #0\n") ; // Break into the debugger
+}
+
+#else
+
 void HardFault_Handler(void)
 {
+    LED2_ON;
+
     // fall out of the sky
-    uint8_t requiredState = SYSTEM_STATE_CONFIG_LOADED | SYSTEM_STATE_MOTORS_READY;
-    if ((systemState & requiredState) == requiredState) {
+    const uint8_t requiredStateForMotors = SYSTEM_STATE_CONFIG_LOADED | SYSTEM_STATE_MOTORS_READY;
+    if ((systemState & requiredStateForMotors) == requiredStateForMotors) {
         stopMotors();
     }
-    while (1);
+
+    LED1_OFF;
+    LED0_OFF;
+
+    while (1) {
+#ifdef LED2
+        delay(50);
+        LED2_TOGGLE;
+#endif
+    }
 }
+
+#endif

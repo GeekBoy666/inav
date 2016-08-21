@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of Cleanflight.
  *
  * Cleanflight is free software: you can redistribute it and/or modify
@@ -20,8 +20,9 @@
 #include <stdlib.h>
 
 #include "platform.h"
-#include "build_config.h"
-#include "debug.h"
+
+#include "build/build_config.h"
+#include "build/debug.h"
 
 #include "common/maths.h"
 
@@ -37,8 +38,6 @@
 #include "accgyro.h"
 #include "accgyro_mpu.h"
 #include "accgyro_mpu6050.h"
-
-extern uint8_t mpuLowPassFilter;
 
 //#define DEBUG_MPU_DATA_READY_INTERRUPT
 

@@ -21,10 +21,13 @@
 
 #include <platform.h>
 
-#include "build_config.h"
-#include "debug.h"
+#include "build/build_config.h"
 
-#include "config/runtime_config.h"
+#include "build/debug.h"
+
+
+#include "fc/runtime_config.h"
+
 
 #include "common/axis.h"
 #include "common/maths.h"
@@ -40,7 +43,8 @@
 
 #include "rx/rx.h"
 
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+
 #include "io/gps.h"
 
 #include "flight/pid.h"
@@ -74,6 +78,7 @@ typedef struct {
     pt1Filter_t angleFilterState;
 
     // Rate filtering
+    rateLimitFilter_t axisAccelFilter;
     pt1Filter_t ptermLpfState;
     pt1Filter_t deltaLpfState;
 } pidState_t;
@@ -278,6 +283,16 @@ static void pidLevel(const pidProfile_t *pidProfile, const controlRateConfig_t *
     }
 }
 
+/* Apply angular acceleration limit to rate target to limit extreme stick inputs to respect physical capabilities of the machine */
+static void pidApplySetpointRateLimiting(const pidProfile_t *pidProfile, pidState_t *pidState, flight_dynamics_index_t axis)
+{
+    const uint32_t axisAccelLimit = (axis == FD_YAW) ? pidProfile->axisAccelerationLimitYaw : pidProfile->axisAccelerationLimitRollPitch;
+
+    if (axisAccelLimit > AXIS_ACCEL_MIN_LIMIT) {
+        pidState->rateTarget = rateLimitFilterApply4(&pidState->axisAccelFilter, pidState->rateTarget, (float)axisAccelLimit, dT);
+    }
+}
+
 static void pidApplyRateController(const pidProfile_t *pidProfile, pidState_t *pidState, flight_dynamics_index_t axis)
 {
     const float rateError = pidState->rateTarget - pidState->gyroRate;
@@ -307,15 +322,20 @@ static void pidApplyRateController(const pidProfile_t *pidProfile, pidState_t *p
         if (pidProfile->dterm_lpf_hz) {
             newDTerm = pt1FilterApply4(&pidState->deltaLpfState, newDTerm, pidProfile->dterm_lpf_hz, dT);
         }
+
+        // Additionally constrain D
+        newDTerm = constrainf(newDTerm, -300.0f, 300.0f);
     }
 
     // TODO: Get feedback from mixer on available correction range for each axis
-    const float pidAttenuationFactor = STATE(PID_ATTENUATE) ? 0.33f : 1.0f;
-    const float newOutput = (newPTerm + newDTerm) * pidAttenuationFactor + pidState->errorGyroIf;
+    const float newOutput = newPTerm + newDTerm + pidState->errorGyroIf;
     const float newOutputLimited = constrainf(newOutput, -PID_MAX_OUTPUT, +PID_MAX_OUTPUT);
 
-    // Integrate only if we can do backtracking
-    pidState->errorGyroIf += (rateError * pidState->kI * dT) + ((newOutputLimited - newOutput) * pidState->kT * dT);
+    // Prevent strong Iterm accumulation during stick inputs
+    const float integratorThreshold = (axis == FD_YAW) ? pidProfile->yawItermIgnoreRate : pidProfile->rollPitchItermIgnoreRate;
+    const float antiWindupScaler = constrainf(1.0f - (ABS(pidState->rateTarget) / integratorThreshold), 0.0f, 1.0f);
+
+    pidState->errorGyroIf += (rateError * pidState->kI * antiWindupScaler * dT) + ((newOutputLimited - newOutput) * pidState->kT * dT);
 
     // Don't grow I-term if motors are at their limit
     if (STATE(ANTI_WINDUP) || motorLimitReached) {
@@ -433,6 +453,26 @@ float pidMagHold(const pidProfile_t *pidProfile)
     return magHoldRate;
 }
 
+/*
+ * TURN ASSISTANT mode is an assisted mode to do a Yaw rotation on a ground plane, allowing one-stick turn in RATE more
+ * and keeping ROLL and PITCH attitude though the turn.
+ */
+static void pidTurnAssistant(pidState_t *pidState)
+{
+    t_fp_vector targetRates;
+
+    targetRates.V.X = 0.0f;
+    targetRates.V.Y = 0.0f;
+    targetRates.V.Z = pidState[YAW].rateTarget;
+
+    imuTransformVectorEarthToBody(&targetRates);
+
+    // Add in roll and pitch, replace yaw completery
+    pidState[ROLL].rateTarget += targetRates.V.X;
+    pidState[PITCH].rateTarget += targetRates.V.Y;
+    pidState[YAW].rateTarget = targetRates.V.Z;
+}
+
 void pidController(const pidProfile_t *pidProfile, const controlRateConfig_t *controlRateConfig, const rxConfig_t *rxConfig)
 {
 
@@ -469,7 +509,16 @@ void pidController(const pidProfile_t *pidProfile, const controlRateConfig_t *co
     if (FLIGHT_MODE(HEADING_LOCK) && magHoldState != MAG_HOLD_ENABLED) {
         pidApplyHeadingLock(pidProfile, &pidState[FD_YAW]);
     }
-    
+
+    if (FLIGHT_MODE(TURN_ASSISTANT)) {
+        pidTurnAssistant(pidState);
+    }
+
+    // Apply setpoint rate of change limits
+    for (int axis = 0; axis < 3; axis++) {
+        pidApplySetpointRateLimiting(pidProfile, &pidState[axis], axis);
+    }
+
     // Step 4: Run gyro-driven control
     for (int axis = 0; axis < 3; axis++) {
         // Apply PID setpoint controller

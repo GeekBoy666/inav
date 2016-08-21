@@ -21,7 +21,8 @@
 
 #include "platform.h"
 
-#include "build_config.h"
+#include "build/build_config.h"
+
 
 #include "common/color.h"
 #include "common/axis.h"
@@ -50,8 +51,8 @@
 #include "io/serial.h"
 #include "io/gimbal.h"
 #include "io/escservo.h"
-#include "io/rc_controls.h"
-#include "io/rc_curves.h"
+#include "fc/rc_controls.h"
+#include "fc/rc_curves.h"
 #include "io/ledstrip.h"
 #include "io/gps.h"
 
@@ -68,7 +69,8 @@
 #include "flight/failsafe.h"
 #include "flight/navigation_rewrite.h"
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
 #include "config/config.h"
 
 #include "config/config_profile.h"
@@ -147,24 +149,19 @@ void useRcControlsConfig(modeActivationCondition_t *modeActivationConditions, es
 #endif
 
 #if FLASH_SIZE <= 128
-    #define FLASH_TO_RESERVE_FOR_CONFIG 0x800
+#define FLASH_TO_RESERVE_FOR_CONFIG 0x800
 #else
-    #define FLASH_TO_RESERVE_FOR_CONFIG 0x1000
+#define FLASH_TO_RESERVE_FOR_CONFIG 0x1000
 #endif
-#ifdef USE_HAL_DRIVER
-#if !defined(CONFIG_START_FLASH_ADDRESS) && !defined(CONFIG_START_FLASH_SECTOR)
-    #error Please define CONFIG_START_FLASH_ADDRESS and CONFIG_START_FLASH_SECTOR in your tarhet.h
-#endif
-#else
+
 // use the last flash pages for storage
 #ifdef CUSTOM_FLASH_MEMORY_ADDRESS
-    size_t custom_flash_memory_address = 0;
-    #define CONFIG_START_FLASH_ADDRESS (custom_flash_memory_address)
+size_t custom_flash_memory_address = 0;
+#define CONFIG_START_FLASH_ADDRESS (custom_flash_memory_address)
 #else
-    // use the last flash pages for storage
-    #ifndef CONFIG_START_FLASH_ADDRESS
-        #define CONFIG_START_FLASH_ADDRESS (0x08000000 + (uint32_t)((FLASH_PAGE_SIZE * FLASH_PAGE_COUNT) - FLASH_TO_RESERVE_FOR_CONFIG))
-    #endif
+// use the last flash pages for storage
+#ifndef CONFIG_START_FLASH_ADDRESS 
+#define CONFIG_START_FLASH_ADDRESS (0x08000000 + (uint32_t)((FLASH_PAGE_SIZE * FLASH_PAGE_COUNT) - FLASH_TO_RESERVE_FOR_CONFIG))
 #endif
 #endif
 
@@ -175,7 +172,7 @@ static uint32_t activeFeaturesLatch = 0;
 static uint8_t currentControlRateProfileIndex = 0;
 controlRateConfig_t *currentControlRateProfile;
 
-static const uint8_t EEPROM_CONF_VERSION = 119;
+static const uint8_t EEPROM_CONF_VERSION = 121;
 
 static void resetAccelerometerTrims(flightDynamicsTrims_t * accZero, flightDynamicsTrims_t * accGain)
 {
@@ -224,6 +221,12 @@ void resetPidProfile(pidProfile_t *pidProfile)
     pidProfile->dterm_lpf_hz = 40;
     pidProfile->yaw_lpf_hz = 30;
 
+    pidProfile->rollPitchItermIgnoreRate = 200;     // dps
+    pidProfile->yawItermIgnoreRate = 50;            // dps
+
+    pidProfile->axisAccelerationLimitYaw = 10000;       // dps/s
+    pidProfile->axisAccelerationLimitRollPitch = 0;     // dps/s
+
     pidProfile->yaw_p_limit = YAW_P_LIMIT_DEFAULT;
     pidProfile->mag_hold_rate_limit = MAG_HOLD_RATE_LIMIT_DEFAULT;
 
@@ -254,7 +257,7 @@ void resetNavConfig(navConfig_t * navConfig)
     navConfig->inav.w_z_baro_p = 0.35f;
 
     navConfig->inav.w_z_gps_p = 0.2f;
-    navConfig->inav.w_z_gps_v = 0.2f;
+    navConfig->inav.w_z_gps_v = 0.5f;
 
     navConfig->inav.w_xy_gps_p = 1.0f;
     navConfig->inav.w_xy_gps_v = 2.0f;
@@ -271,6 +274,7 @@ void resetNavConfig(navConfig_t * navConfig)
     navConfig->pos_failure_timeout = 5;     // 5 sec
     navConfig->waypoint_radius = 100;       // 2m diameter
     navConfig->max_speed = 300;             // 3 m/s = 10.8 km/h
+    navConfig->max_climb_rate = 500;        // 5 m/s
     navConfig->max_manual_speed = 500;
     navConfig->max_manual_climb_rate = 200;
     navConfig->land_descent_rate = 200;     // 2 m/s
@@ -332,6 +336,7 @@ void resetFlight3DConfig(flight3DConfig_t *flight3DConfig)
     flight3DConfig->deadband3d_throttle = 50;
 }
 
+#ifdef TELEMETRY
 void resetTelemetryConfig(telemetryConfig_t *telemetryConfig)
 {
     telemetryConfig->telemetry_inversion = 0;
@@ -343,6 +348,7 @@ void resetTelemetryConfig(telemetryConfig_t *telemetryConfig)
     telemetryConfig->frsky_vfas_precision = 0;
     telemetryConfig->hottAlarmSoundInterval = 5;
 }
+#endif
 
 void resetBatteryConfig(batteryConfig_t *batteryConfig)
 {
@@ -502,7 +508,9 @@ static void resetConf(void)
 
     resetBatteryConfig(&masterConfig.batteryConfig);
 
+#ifdef TELEMETRY
     resetTelemetryConfig(&masterConfig.telemetryConfig);
+#endif
 
     masterConfig.rxConfig.serialrx_provider = 0;
     masterConfig.rxConfig.nrf24rx_protocol = NRF24_DEFAULT_PROTOCOL;
@@ -561,7 +569,6 @@ static void resetConf(void)
     resetSerialConfig(&masterConfig.serialConfig);
 
     masterConfig.looptime = 2000;
-    masterConfig.emf_avoidance = 0;
     masterConfig.i2c_overclock = 0;
     masterConfig.gyroSync = 0;
     masterConfig.gyroSyncDenominator = 2;
@@ -574,6 +581,8 @@ static void resetConf(void)
     //     cfg.activate[i] = 0;
 
     currentProfile->mag_declination = 0;
+
+    currentProfile->modeActivationOperator = MODE_OPERATOR_OR; // default is to OR multiple-channel mode activation conditions
 
     resetBarometerConfig(&masterConfig.barometerConfig);
 
@@ -606,6 +615,10 @@ static void resetConf(void)
 
     // gimbal
     currentProfile->gimbalConfig.mode = GIMBAL_MODE_NORMAL;
+
+    currentProfile->flaperon_throw_offset = FLAPERON_THROW_DEFAULT;
+    currentProfile->flaperon_throw_inverted = 0;
+
 #endif
 
     // custom mixer. clear by defaults.
@@ -613,8 +626,11 @@ static void resetConf(void)
         masterConfig.customMotorMixer[i].throttle = 0.0f;
 
 #ifdef LED_STRIP
-    applyDefaultColors(masterConfig.colors, CONFIGURABLE_COLOR_COUNT);
+    applyDefaultColors(masterConfig.colors);
     applyDefaultLedStripConfig(masterConfig.ledConfigs);
+    applyDefaultModeColors(masterConfig.modeColors);
+    applyDefaultSpecialColors(&(masterConfig.specialColors));
+    masterConfig.ledstrip_visual_beeper = 0;
 #endif
 
 #ifdef BLACKBOX
@@ -768,7 +784,6 @@ static bool isEEPROMContentValid(void)
 
 void activateControlRateConfig(void)
 {
-    generateRcCurves(currentControlRateProfile);
     generateThrottleCurve(currentControlRateProfile, &masterConfig.escAndServoConfig);
 }
 
@@ -922,10 +937,10 @@ static void validateAndFixConfig(void)
     if (featureConfigured(FEATURE_SOFTSERIAL) && (
             0
 #ifdef USE_SOFTSERIAL1
-            || (LED_STRIP_TIMER == SOFTSERIAL_1_TIMER)
+            || (WS2811_TIMER == SOFTSERIAL_1_TIMER)
 #endif
 #ifdef USE_SOFTSERIAL2
-            || (LED_STRIP_TIMER == SOFTSERIAL_2_TIMER)
+            || (WS2811_TIMER == SOFTSERIAL_2_TIMER)
 #endif
     )) {
         // led strip needs the same timer as softserial
@@ -953,7 +968,9 @@ static void validateAndFixConfig(void)
 
 #ifdef STM32F303xC
     // hardware supports serial port inversion, make users life easier for those that want to connect SBus RX's
+#ifdef TELEMETRY
     masterConfig.telemetryConfig.telemetry_inversion = 1;
+#endif
 #endif
 
 #if defined(CC3D)
@@ -978,7 +995,7 @@ static void validateAndFixConfig(void)
 #if defined(COLIBRI_RACE)
     masterConfig.serialConfig.portConfigs[0].functionMask = FUNCTION_MSP;
     if(featureConfigured(FEATURE_RX_SERIAL)) {
-	    masterConfig.serialConfig.portConfigs[2].functionMask = FUNCTION_RX_SERIAL;
+        masterConfig.serialConfig.portConfigs[2].functionMask = FUNCTION_RX_SERIAL;
     }
 #endif
 
@@ -1042,72 +1059,7 @@ void readEEPROMAndNotify(void)
     readEEPROM();
     beeperConfirmationBeeps(1);
 }
-#ifdef USE_HAL_DRIVER
 
-// FIXME: HAL for now this will only work for F4/F7 as flash layout is different
-void writeEEPROM(void)
-{
-    // Generate compile time error if the config does not fit in the reserved area of flash.
-    BUILD_BUG_ON(sizeof(master_t) > FLASH_TO_RESERVE_FOR_CONFIG);
-
-    HAL_StatusTypeDef status;
-    uint32_t wordOffset;
-    int8_t attemptsRemaining = 3;
-
-    suspendRxSignal();
-
-    // prepare checksum/version constants
-    masterConfig.version = EEPROM_CONF_VERSION;
-    masterConfig.size = sizeof(master_t);
-    masterConfig.magic_be = 0xBE;
-    masterConfig.magic_ef = 0xEF;
-    masterConfig.chk = 0; // erase checksum before recalculating
-    masterConfig.chk = calculateChecksum((const uint8_t *) &masterConfig, sizeof(master_t));
-
-    // write it
-    /* Unlock the Flash to enable the flash control register access *************/
-    HAL_FLASH_Unlock();
-    while (attemptsRemaining--)
-    {
-        /* Fill EraseInit structure*/
-        FLASH_EraseInitTypeDef EraseInitStruct = {0};
-        EraseInitStruct.TypeErase     = FLASH_TYPEERASE_SECTORS;
-        EraseInitStruct.VoltageRange  = FLASH_VOLTAGE_RANGE_3; // 2.7-3.6V
-        EraseInitStruct.Sector        = CONFIG_START_FLASH_SECTOR;
-        EraseInitStruct.NbSectors     = 1;
-        uint32_t SECTORError;
-        status = HAL_FLASHEx_Erase(&EraseInitStruct, &SECTORError);
-        if (status != HAL_OK)
-        {
-            continue;
-        }
-        else
-        {
-            for (wordOffset = 0; wordOffset < sizeof(master_t); wordOffset += 4)
-            {
-                status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, CONFIG_START_FLASH_ADDRESS + wordOffset, *(uint32_t *) ((char *) &masterConfig + wordOffset));
-                if(status != HAL_OK)
-                {
-                    break;
-                }
-            }
-        }
-
-
-        if (status == HAL_OK) {
-            break;
-        }
-    }
-    HAL_FLASH_Lock();
-
-    // Flash write failed - just die now
-    if (status != HAL_OK || !isEEPROMContentValid()) {
-        failureMode(FAILURE_FLASH_WRITE_FAILED);
-    }
-
-    resumeRxSignal();
-}
-#else
 void writeEEPROM(void)
 {
     // Generate compile time error if the config does not fit in the reserved area of flash.
@@ -1130,6 +1082,9 @@ void writeEEPROM(void)
     // write it
     FLASH_Unlock();
     while (attemptsRemaining--) {
+#ifdef STM32F40_41xxx
+        FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
+#endif
 #ifdef STM32F303
         FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
 #endif
@@ -1138,7 +1093,13 @@ void writeEEPROM(void)
 #endif
         for (wordOffset = 0; wordOffset < sizeof(master_t); wordOffset += 4) {
             if (wordOffset % FLASH_PAGE_SIZE == 0) {
+#if defined(STM32F40_41xxx)
+                status = FLASH_EraseSector(FLASH_Sector_8, VoltageRange_3); //0x08080000 to 0x080A0000
+#elif defined (STM32F411xE)
+                status = FLASH_EraseSector(FLASH_Sector_7, VoltageRange_3); //0x08060000 to 0x08080000
+#else
                 status = FLASH_ErasePage(CONFIG_START_FLASH_ADDRESS + wordOffset);
+#endif
                 if (status != FLASH_COMPLETE) {
                     break;
                 }
@@ -1163,8 +1124,6 @@ void writeEEPROM(void)
 
     resumeRxSignal();
 }
-#endif
-
 
 void ensureEEPROMContainsValidData(void)
 {
@@ -1300,12 +1259,12 @@ void setBeeperOffMask(uint32_t mask)
     masterConfig.beeper_off_flags = mask;
 }
 
-uint32_t getPreferedBeeperOffMask(void)
+uint32_t getPreferredBeeperOffMask(void)
 {
-    return masterConfig.prefered_beeper_off_flags;
+    return masterConfig.preferred_beeper_off_flags;
 }
 
-void setPreferedBeeperOffMask(uint32_t mask)
+void setPreferredBeeperOffMask(uint32_t mask)
 {
-    masterConfig.prefered_beeper_off_flags = mask;
+    masterConfig.preferred_beeper_off_flags = mask;
 }

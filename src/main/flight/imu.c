@@ -23,10 +23,13 @@
 
 #include "common/maths.h"
 
-#include "build_config.h"
+#include "build/build_config.h"
+
 #include "platform.h"
-#include "debug.h"
-#include "build_config.h"
+#include "build/debug.h"
+
+#include "build/build_config.h"
+
 
 #include "common/axis.h"
 #include "common/filter.h"
@@ -48,7 +51,8 @@
 #include "flight/hil.h"
 
 #include "io/gps.h"
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
 #include "config/config.h"
 
 /**
@@ -94,7 +98,7 @@ STATIC_UNIT_TESTED void imuComputeRotationMatrix(void)
     float q1q1 = q1 * q1;
     float q2q2 = q2 * q2;
     float q3q3 = q3 * q3;
-    
+
     float q0q1 = q0 * q1;
     float q0q2 = q0 * q2;
     float q0q3 = q0 * q3;
@@ -154,7 +158,7 @@ void imuTransformVectorEarthToBody(t_fp_vector * v)
     float x,y,z;
 
     v->V.Y = -v->V.Y;
-    
+
     /* From earth frame to body frame */
     x = rMat[0][0] * v->V.X + rMat[1][0] * v->V.Y + rMat[2][0] * v->V.Z;
     y = rMat[0][1] * v->V.X + rMat[1][1] * v->V.Y + rMat[2][1] * v->V.Z;
@@ -304,11 +308,9 @@ static void imuMahonyAHRSupdate(float dt, float gx, float gy, float gz,
         // using one-over-exact length (which needs a costly square root), we already 
         // know the vector is enough "roughly unit length" and since it is only weighted
         // in by a certain amount anyway later, having that exact is meaningless. (c) MasterZap
-        recipNorm = 1.0f / GRAVITY_CMSS;
-
-        ax *= recipNorm;
-        ay *= recipNorm;
-        az *= recipNorm;
+        ax *= (1.0f / GRAVITY_CMSS);
+        ay *= (1.0f / GRAVITY_CMSS);
+        az *= (1.0f / GRAVITY_CMSS);
 
         float fAccWeightScaler = accWeight / (float)MAX_ACC_SQ_NEARNESS;
 

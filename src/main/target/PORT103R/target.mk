@@ -1,5 +1,5 @@
 F1_TARGETS  += $(TARGET)
-FEATURES     = ONBOARDFLASH HIGHEND 
+FEATURES     = ONBOARDFLASH HIGHEND
 
 DEVICE_FLAGS    = -DSTM32F10X_HD
 
@@ -12,6 +12,7 @@ TARGET_SRC = \
             drivers/accgyro_mpu3050.c \
             drivers/accgyro_mpu6050.c \
             drivers/accgyro_spi_mpu6000.c \
+            drivers/accgyro_mpu6500.c \
             drivers/accgyro_spi_mpu6500.c \
             drivers/barometer_bmp085.c \
             drivers/barometer_bmp280.c \

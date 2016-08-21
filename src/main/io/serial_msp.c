@@ -21,9 +21,11 @@
 #include <string.h>
 #include <math.h>
 
-#include "build_config.h"
-#include "debug.h"
 #include "platform.h"
+
+#include "build/build_config.h"
+#include "build/debug.h"
+#include "build/version.h"
 
 #include "scheduler/scheduler.h"
 
@@ -44,19 +46,23 @@
 #include "drivers/gpio.h"
 #include "drivers/timer.h"
 #include "drivers/pwm_rx.h"
+#include "drivers/sdcard.h"
 
 #include "drivers/buf_writer.h"
 #include "rx/rx.h"
 #include "rx/msp.h"
+#include "blackbox/blackbox.h"
 
 #include "io/escservo.h"
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+
 #include "io/gps.h"
 #include "io/gimbal.h"
 #include "io/serial.h"
 #include "io/ledstrip.h"
 #include "io/flashfs.h"
 #include "io/msp_protocol.h"
+#include "io/asyncfatfs/asyncfatfs.h"
 
 #include "telemetry/telemetry.h"
 
@@ -76,14 +82,15 @@
 #include "flight/failsafe.h"
 #include "flight/navigation_rewrite.h"
 
-#include "mw.h"
+#include "fc/mw.h"
+#include "fc/runtime_config.h"
 
-#include "config/runtime_config.h"
 #include "config/config.h"
 #include "config/config_profile.h"
 #include "config/config_master.h"
 
-#include "version.h"
+#include "blackbox/blackbox.h"
+
 #ifdef NAZE
 #include "hardware_revision.h"
 #endif
@@ -143,6 +150,8 @@ static const box_t boxes[CHECKBOX_ITEM_COUNT + 1] = {
     { BOXGCSNAV, "GCS NAV;", 31 },
     { BOXHEADINGLOCK, "HEADING LOCK;", 32 },
     { BOXSURFACE, "SURFACE;", 33 },
+    { BOXFLAPERON, "FLAPERON;", 34 },
+    { BOXTURNASSIST, "TURN ASSIST;", 35 },
     { CHECKBOX_ITEM_COUNT, NULL, 0xFF }
 };
 
@@ -167,6 +176,23 @@ static const char pidnames[] =
     "LEVEL;"
     "MAG;"
     "VEL;";
+
+typedef enum {
+    MSP_SDCARD_STATE_NOT_PRESENT = 0,
+    MSP_SDCARD_STATE_FATAL       = 1,
+    MSP_SDCARD_STATE_CARD_INIT   = 2,
+    MSP_SDCARD_STATE_FS_INIT     = 3,
+    MSP_SDCARD_STATE_READY       = 4,
+} mspSDCardState_e;
+
+typedef enum {
+    MSP_SDCARD_FLAG_SUPPORTTED   = 1,
+} mspSDCardFlags_e;
+
+typedef enum {
+    MSP_FLASHFS_BIT_READY        = 1,
+    MSP_FLASHFS_BIT_SUPPORTED    = 2,
+} mspFlashfsFlags_e;
 
 static mspPort_t mspPorts[MAX_MSP_PORT_COUNT];
 
@@ -312,6 +338,55 @@ reset:
     }
 }
 
+static void serializeSDCardSummaryReply(void)
+{
+    headSerialReply(3 + 2 * 4);
+
+#ifdef USE_SDCARD
+    uint8_t flags = MSP_SDCARD_FLAG_SUPPORTTED;
+    uint8_t state;
+
+    serialize8(flags);
+
+    // Merge the card and filesystem states together
+    if (!sdcard_isInserted()) {
+        state = MSP_SDCARD_STATE_NOT_PRESENT;
+    } else if (!sdcard_isFunctional()) {
+        state = MSP_SDCARD_STATE_FATAL;
+    } else {
+        switch (afatfs_getFilesystemState()) {
+            case AFATFS_FILESYSTEM_STATE_READY:
+                state = MSP_SDCARD_STATE_READY;
+                break;
+            case AFATFS_FILESYSTEM_STATE_INITIALIZATION:
+                if (sdcard_isInitialized()) {
+                    state = MSP_SDCARD_STATE_FS_INIT;
+                } else {
+                    state = MSP_SDCARD_STATE_CARD_INIT;
+                }
+                break;
+            case AFATFS_FILESYSTEM_STATE_FATAL:
+            case AFATFS_FILESYSTEM_STATE_UNKNOWN:
+            default:
+                state = MSP_SDCARD_STATE_FATAL;
+                break;
+        }
+    }
+
+    serialize8(state);
+    serialize8(afatfs_getLastError());
+    // Write free space and total space in kilobytes
+    serialize32(afatfs_getContiguousFreeSpace() / 1024);
+    serialize32(sdcard_getMetadata()->numBlocks / 2); // Block size is half a kilobyte
+#else
+    serialize8(0);
+    serialize8(0);
+    serialize8(0);
+    serialize32(0);
+    serialize32(0);
+#endif
+}
+
 static void serializeDataflashSummaryReply(void)
 {
     headSerialReply(1 + 3 * 4);
@@ -407,6 +482,7 @@ void mspInit(void)
     if (sensors(SENSOR_ACC)) {
         activeBoxIds[activeBoxIdCount++] = BOXANGLE;
         activeBoxIds[activeBoxIdCount++] = BOXHORIZON;
+        activeBoxIds[activeBoxIdCount++] = BOXTURNASSIST;
     }
 
     activeBoxIds[activeBoxIdCount++] = BOXAIRMODE;
@@ -437,8 +513,17 @@ void mspInit(void)
     }
 #endif
 
-    if (isFixedWing)
+    if (isFixedWing) {
         activeBoxIds[activeBoxIdCount++] = BOXPASSTHRU;
+    }
+
+    /*
+     * FLAPERON mode active only in case of airplane and custom airplane. Activating on
+     * flying wing can cause bad thing
+     */
+    if (masterConfig.mixerMode == MIXER_AIRPLANE || masterConfig.mixerMode == MIXER_CUSTOM_AIRPLANE) {
+        activeBoxIds[activeBoxIdCount++] = BOXFLAPERON;
+    }
 
     activeBoxIds[activeBoxIdCount++] = BOXBEEPERON;
 
@@ -450,8 +535,10 @@ void mspInit(void)
 
     activeBoxIds[activeBoxIdCount++] = BOXOSD;
 
+#ifdef TELEMETRY
     if (feature(FEATURE_TELEMETRY) && masterConfig.telemetryConfig.telemetry_switch)
         activeBoxIds[activeBoxIdCount++] = BOXTELEMETRY;
+#endif
 
 #ifdef USE_SERVOS
     if (masterConfig.mixerMode == MIXER_CUSTOM_AIRPLANE) {
@@ -511,6 +598,8 @@ static uint32_t packFlightModeFlags(void)
         IS_ENABLED(IS_RC_MODE_ACTIVE(BOXGCSNAV)) << BOXGCSNAV |
         IS_ENABLED(FLIGHT_MODE(HEADING_LOCK)) << BOXHEADINGLOCK |
         IS_ENABLED(IS_RC_MODE_ACTIVE(BOXSURFACE)) << BOXSURFACE |
+        IS_ENABLED(FLIGHT_MODE(FLAPERON)) << BOXFLAPERON |
+        IS_ENABLED(FLIGHT_MODE(TURN_ASSISTANT)) << BOXTURNASSIST |
         IS_ENABLED(IS_RC_MODE_ACTIVE(BOXHOMERESET)) << BOXHOMERESET;
 
     for (i = 0; i < activeBoxIdCount; i++) {
@@ -961,7 +1050,7 @@ static bool processOutCommand(uint8_t cmdMSP)
         break;
 
     case MSP_RX_CONFIG:
-        headSerialReply(13);
+        headSerialReply(22);
         serialize8(masterConfig.rxConfig.serialrx_provider);
         serialize16(masterConfig.rxConfig.maxcheck);
         serialize16(masterConfig.rxConfig.midrc);
@@ -969,7 +1058,12 @@ static bool processOutCommand(uint8_t cmdMSP)
         serialize8(masterConfig.rxConfig.spektrum_sat_bind);
         serialize16(masterConfig.rxConfig.rx_min_usec);
         serialize16(masterConfig.rxConfig.rx_max_usec);
+        serialize8(0); // for compatibility with betaflight
+        serialize8(0); // for compatibility with betaflight
+        serialize16(0); // for compatibility with betaflight
         serialize8(masterConfig.rxConfig.nrf24rx_protocol);
+        serialize32(masterConfig.rxConfig.nrf24rx_id);
+        serialize8(masterConfig.rxConfig.nrf24rx_channel_count);
         break;
 
     case MSP_FAILSAFE_CONFIG:
@@ -1036,8 +1130,8 @@ static bool processOutCommand(uint8_t cmdMSP)
 
 #ifdef LED_STRIP
     case MSP_LED_COLORS:
-        headSerialReply(CONFIGURABLE_COLOR_COUNT * 4);
-        for (i = 0; i < CONFIGURABLE_COLOR_COUNT; i++) {
+        headSerialReply(LED_CONFIGURABLE_COLOR_COUNT * 4);
+        for (i = 0; i < LED_CONFIGURABLE_COLOR_COUNT; i++) {
             hsvColor_t *color = &masterConfig.colors[i];
             serialize16(color->h);
             serialize8(color->s);
@@ -1046,14 +1140,27 @@ static bool processOutCommand(uint8_t cmdMSP)
         break;
 
     case MSP_LED_STRIP_CONFIG:
-        headSerialReply(MAX_LED_STRIP_LENGTH * 7);
-        for (i = 0; i < MAX_LED_STRIP_LENGTH; i++) {
+        headSerialReply(LED_MAX_STRIP_LENGTH * 4);
+        for (i = 0; i < LED_MAX_STRIP_LENGTH; i++) {
             ledConfig_t *ledConfig = &masterConfig.ledConfigs[i];
-            serialize16((ledConfig->flags & LED_DIRECTION_MASK) >> LED_DIRECTION_BIT_OFFSET);
-            serialize16((ledConfig->flags & LED_FUNCTION_MASK) >> LED_FUNCTION_BIT_OFFSET);
-            serialize8(GET_LED_X(ledConfig));
-            serialize8(GET_LED_Y(ledConfig));
-            serialize8(ledConfig->color);
+            serialize32(*ledConfig);
+        }
+        break;
+
+    case MSP_LED_STRIP_MODECOLOR:
+        headSerialReply(((LED_MODE_COUNT * LED_DIRECTION_COUNT) + LED_SPECIAL_COLOR_COUNT) * 3);
+        for (int i = 0; i < LED_MODE_COUNT; i++) {
+            for (int j = 0; j < LED_DIRECTION_COUNT; j++) {
+                serialize8(i);
+                serialize8(j);
+                serialize8(masterConfig.modeColors[i].color[j]);
+            }
+        }
+
+        for (int j = 0; j < LED_SPECIAL_COLOR_COUNT; j++) {
+            serialize8(LED_MODE_COUNT);
+            serialize8(j);
+            serialize8(masterConfig.specialColors.color[j]);
         }
         break;
 #endif
@@ -1072,6 +1179,25 @@ static bool processOutCommand(uint8_t cmdMSP)
         break;
 #endif
 
+    case MSP_BLACKBOX_CONFIG:
+            headSerialReply(4);
+#ifdef BLACKBOX
+            serialize8(1); //Blackbox supported
+            serialize8(masterConfig.blackbox_device);
+            serialize8(masterConfig.blackbox_rate_num);
+            serialize8(masterConfig.blackbox_rate_denom);
+#else
+            serialize8(0); // Blackbox not supported
+            serialize8(0);
+            serialize8(0);
+            serialize8(0);
+#endif
+        break;
+
+    case MSP_SDCARD_SUMMARY:
+        serializeSDCardSummaryReply();
+        break;
+
     case MSP_BF_BUILD_INFO:
         headSerialReply(11 + 4 + 4);
         for (i = 0; i < 11; i++)
@@ -1081,18 +1207,18 @@ static bool processOutCommand(uint8_t cmdMSP)
         break;
 
     case MSP_3D:
-        headSerialReply(2 * 4);
+        headSerialReply(2 * 3);
         serialize16(masterConfig.flight3DConfig.deadband3d_low);
         serialize16(masterConfig.flight3DConfig.deadband3d_high);
         serialize16(masterConfig.flight3DConfig.neutral3d);
-        serialize16(masterConfig.flight3DConfig.deadband3d_throttle);
         break;
 
     case MSP_RC_DEADBAND:
-        headSerialReply(3);
+        headSerialReply(5);
         serialize8(currentProfile->rcControlsConfig.deadband);
         serialize8(currentProfile->rcControlsConfig.yaw_deadband);
         serialize8(currentProfile->rcControlsConfig.alt_hold_deadband);
+        serialize16(masterConfig.flight3DConfig.deadband3d_throttle);
         break;
     case MSP_SENSOR_ALIGNMENT:
         headSerialReply(3);
@@ -1369,6 +1495,17 @@ static bool processInCommand(void)
         readEEPROM();
         break;
 
+#ifdef BLACKBOX
+        case MSP_SET_BLACKBOX_CONFIG:
+            // Don't allow config to be updated while Blackbox is logging
+            if (!blackboxMayEditConfig())
+                return false;
+            masterConfig.blackbox_device = read8();
+            masterConfig.blackbox_rate_num = read8();
+            masterConfig.blackbox_rate_denom = read8();
+            break;
+#endif
+
 #ifdef USE_FLASHFS
     case MSP_DATAFLASH_ERASE:
         flashfsEraseCompletely();
@@ -1456,7 +1593,19 @@ static bool processInCommand(void)
             masterConfig.rxConfig.rx_max_usec = read16();
         }
         if (currentPort->dataSize > 12) {
+            // for compatibility with betaflight
+            read8();
+            read8();
+            read16();
+        }
+        if (currentPort->dataSize > 16) {
             masterConfig.rxConfig.nrf24rx_protocol = read8();
+        }
+        if (currentPort->dataSize > 17) {
+            masterConfig.rxConfig.nrf24rx_id = read32();
+        }
+        if (currentPort->dataSize > 21) {
+            masterConfig.rxConfig.nrf24rx_channel_count = read8();
         }
         break;
 
@@ -1542,7 +1691,7 @@ static bool processInCommand(void)
 
 #ifdef LED_STRIP
     case MSP_SET_LED_COLORS:
-        for (i = 0; i < CONFIGURABLE_COLOR_COUNT; i++) {
+        for (i = 0; i < LED_CONFIGURABLE_COLOR_COUNT; i++) {
             hsvColor_t *color = &masterConfig.colors[i];
             color->h = read16();
             color->s = read8();
@@ -1553,29 +1702,24 @@ static bool processInCommand(void)
     case MSP_SET_LED_STRIP_CONFIG:
         {
             i = read8();
-            if (i >= MAX_LED_STRIP_LENGTH || currentPort->dataSize != (1 + 7)) {
+            if (i >= LED_MAX_STRIP_LENGTH || currentPort->dataSize != (1 + 4)) {
                 headSerialError(0);
                 break;
             }
             ledConfig_t *ledConfig = &masterConfig.ledConfigs[i];
-            uint16_t mask;
-            // currently we're storing directions and functions in a uint16 (flags)
-            // the msp uses 2 x uint16_t to cater for future expansion
-            mask = read16();
-            ledConfig->flags = (mask << LED_DIRECTION_BIT_OFFSET) & LED_DIRECTION_MASK;
+            *ledConfig = read32();
+            reevaluateLedConfig();
+        }
+        break;
 
-            mask = read16();
-            ledConfig->flags |= (mask << LED_FUNCTION_BIT_OFFSET) & LED_FUNCTION_MASK;
+    case MSP_SET_LED_STRIP_MODECOLOR:
+        {
+            ledModeIndex_e modeIdx = read8();
+            int funIdx = read8();
+            int color = read8();
 
-            mask = read8();
-            ledConfig->xy = CALCULATE_LED_X(mask);
-
-            mask = read8();
-            ledConfig->xy |= CALCULATE_LED_Y(mask);
-
-            ledConfig->color = read8();
-
-            reevalulateLedConfig();
+            if (!setModeColor(modeIdx, funIdx, color))
+                return false;
         }
         break;
 #endif
@@ -1586,7 +1730,8 @@ static bool processInCommand(void)
 #ifdef USE_SERIAL_4WAY_BLHELI_INTERFACE
     case MSP_SET_4WAY_IF:
         // get channel number
-        // we do not give any data back, assume channel number is transmitted OK
+        // switch all motor lines HI
+        // reply the count of ESC found
         headSerialReply(1);
         serialize8(esc4wayInit());
         // because we do not come back after calling Process4WayInterface

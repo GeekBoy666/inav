@@ -20,7 +20,7 @@
 #include "common/maths.h"
 #include "common/filter.h"
 
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
 #include "io/escservo.h"
 #include "io/gps.h"
 
@@ -41,7 +41,9 @@ void onNewGPSData(void);
 #define NAV_BLACKBOX
 #endif
 
-#define NAV_MAX_WAYPOINTS           15
+#ifndef NAV_MAX_WAYPOINTS
+#define NAV_MAX_WAYPOINTS 15
+#endif
 
 enum {
     NAV_GPS_ATTI    = 0,                    // Pitch/roll stick controls attitude (pitch/roll lean angles)
@@ -104,6 +106,7 @@ typedef struct navConfig_s {
     uint8_t  pos_failure_timeout;           // Time to wait before switching to emergency landing (0 - disable)
     uint16_t waypoint_radius;               // if we are within this distance to a waypoint then we consider it reached (distance is in cm)
     uint16_t max_speed;                     // autonomous navigation speed cm/sec
+    uint16_t max_climb_rate;                // max vertical speed limitation cm/sec
     uint16_t max_manual_speed;              // manual velocity control max horizontal speed
     uint16_t max_manual_climb_rate;         // manual velocity control max vertical speed
     uint16_t land_descent_rate;             // normal RTH landing descent rate
@@ -276,6 +279,7 @@ extern int16_t navTargetSurface;
 extern int16_t navActualSurface;
 extern int16_t navDebug[4];
 extern uint16_t navFlags;
+extern int16_t navAccNEU[3];
 #if defined(BLACKBOX)
 #define NAV_BLACKBOX_DEBUG(x,y) navDebug[x] = constrain((y), -32678, 32767)
 #else

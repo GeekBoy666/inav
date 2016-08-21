@@ -21,9 +21,11 @@
 #include <string.h>
 
 #include "platform.h"
-#include "debug.h"
+#include "build/debug.h"
 
-#include "build_config.h"
+
+#include "build/build_config.h"
+
 
 #include "common/axis.h"
 #include "common/maths.h"
@@ -40,7 +42,8 @@
 
 #include "io/gimbal.h"
 #include "io/escservo.h"
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+
 
 #include "sensors/sensors.h"
 #include "sensors/acceleration.h"
@@ -51,8 +54,10 @@
 #include "flight/imu.h"
 #include "flight/navigation_rewrite.h"
 
-#include "config/runtime_config.h"
+#include "fc/runtime_config.h"
+
 #include "config/config.h"
+#include "config/config_profile.h"
 
 //#define MIXER_DEBUG
 
@@ -355,6 +360,15 @@ void mixerUseConfigs(
 }
 
 #ifdef USE_SERVOS
+
+int16_t getFlaperonDirection(uint8_t servoPin) {
+    if (servoPin == SERVO_FLAPPERON_2) {
+        return -1;
+    } else {
+        return 1;
+    }
+}
+
 int16_t determineServoMiddleOrForwardFromChannel(servoIndex_e servoIndex)
 {
     uint8_t channelToForwardFrom = servoConf[servoIndex].forwardFromChannel;
@@ -390,7 +404,7 @@ bool isMixerEnabled(mixerMode_e mixerMode)
 #ifdef USE_SERVOS
 void mixerInit(mixerMode_e mixerMode, motorMixer_t *initialCustomMotorMixers, servoMixer_t *initialCustomServoMixers)
 {
-    uint8_t i;
+    int i;
 
     currentMixerMode = mixerMode;
 
@@ -402,6 +416,12 @@ void mixerInit(mixerMode_e mixerMode, motorMixer_t *initialCustomMotorMixers, se
         ENABLE_STATE(FIXED_WING);
     } else {
         DISABLE_STATE(FIXED_WING);
+    }
+
+    if (currentMixerMode == MIXER_AIRPLANE || currentMixerMode == MIXER_CUSTOM_AIRPLANE) {
+        ENABLE_STATE(FLAPERON_AVAILABLE);
+    } else {
+        DISABLE_STATE(FLAPERON_AVAILABLE);
     }
 
     customMixers = initialCustomMotorMixers;
@@ -464,7 +484,7 @@ void mixerUsePWMIOConfiguration(void)
     int i;
 
     motorCount = 0;
-    
+
     if (currentMixerMode == MIXER_CUSTOM || currentMixerMode == MIXER_CUSTOM_TRI || currentMixerMode == MIXER_CUSTOM_AIRPLANE) {
         // load custom mixer into currentMixer
         for (i = 0; i < MAX_SUPPORTED_MOTORS; i++) {
@@ -500,7 +520,7 @@ void mixerUsePWMIOConfiguration(void)
 void mixerUsePWMIOConfiguration(void)
 {
     motorCount = 4;
-    uint8_t i;
+    int i;
     for (i = 0; i < motorCount; i++) {
         currentMixer[i] = mixerQuadX[i];
     }
@@ -513,7 +533,7 @@ void mixerUsePWMIOConfiguration(void)
 #ifdef USE_SERVOS
 void loadCustomServoMixer(void)
 {
-    uint8_t i;
+    int i;
 
     // reset settings
     servoRuleCount = 0;
@@ -591,7 +611,7 @@ STATIC_UNIT_TESTED void forwardAuxChannelsToServos(uint8_t firstServoIndex)
     // start forwarding from this channel
     uint8_t channelOffset = AUX1;
 
-    uint8_t servoOffset;
+    int servoOffset;
     for (servoOffset = 0; servoOffset < MAX_AUX_CHANNEL_COUNT && channelOffset < MAX_SUPPORTED_RC_CHANNEL_COUNT; servoOffset++) {
         pwmWriteServo(firstServoIndex + servoOffset, rcData[channelOffset++]);
     }
@@ -599,7 +619,7 @@ STATIC_UNIT_TESTED void forwardAuxChannelsToServos(uint8_t firstServoIndex)
 
 void writeServos(void)
 {
-    uint8_t servoIndex = 0;
+    int servoIndex = 0;
 
     bool zeroServoValue = false;
 
@@ -635,7 +655,7 @@ void writeServos(void)
 
 void writeMotors(void)
 {
-    uint8_t i;
+    int i;
 
     for (i = 0; i < motorCount; i++)
         pwmWriteMotor(i, motor[i]);
@@ -648,7 +668,7 @@ void writeMotors(void)
 
 void writeAllMotors(int16_t mc)
 {
-    uint8_t i;
+    int i;
 
     // Sends commands to all motors
     for (i = 0; i < motorCount; i++)
@@ -670,7 +690,7 @@ void StopPwmAllMotors()
 
 void mixTable(void)
 {
-    uint32_t i;
+    int i;
 
     if (motorCount >= 4 && mixerConfig->yaw_jump_prevention_limit < YAW_JUMP_PREVENTION_LIMIT_HIGH) {
         // prevent "yaw jump" during yaw correction
@@ -779,11 +799,11 @@ void mixTable(void)
 
 #ifdef USE_SERVOS
 
-void servoMixer(void)
+void servoMixer(uint16_t flaperon_throw_offset, uint8_t flaperon_throw_inverted)
 {
     int16_t input[INPUT_SOURCE_COUNT]; // Range [-500:+500]
     static int16_t currentOutput[MAX_SERVO_RULES];
-    uint8_t i;
+    int i;
 
     if (FLIGHT_MODE(PASSTHRU_MODE)) {
         // Direct passthru from RX
@@ -835,13 +855,26 @@ void servoMixer(void)
             int16_t min = currentServoMixer[i].min * servo_width / 100 - servo_width / 2;
             int16_t max = currentServoMixer[i].max * servo_width / 100 - servo_width / 2;
 
-            if (currentServoMixer[i].speed == 0)
+            if (currentServoMixer[i].speed == 0) {
                 currentOutput[i] = input[from];
-            else {
-                if (currentOutput[i] < input[from])
+            } else {
+                if (currentOutput[i] < input[from]) {
                     currentOutput[i] = constrain(currentOutput[i] + currentServoMixer[i].speed, currentOutput[i], input[from]);
-                else if (currentOutput[i] > input[from])
+                } else if (currentOutput[i] > input[from]) {
                     currentOutput[i] = constrain(currentOutput[i] - currentServoMixer[i].speed, input[from], currentOutput[i]);
+                }
+            }
+
+            /*
+            Flaperon fligh mode
+            */
+            if (FLIGHT_MODE(FLAPERON) && (target == SERVO_FLAPPERON_1 || target == SERVO_FLAPPERON_2)) {
+                int8_t multiplier = 1;
+
+                if (flaperon_throw_inverted == 1) {
+                    multiplier = -1;
+                }
+                currentOutput[i] += flaperon_throw_offset * getFlaperonDirection(target) * multiplier;
             }
 
             servo[target] += servoDirection(target, from) * constrain(((int32_t)currentOutput[i] * currentServoMixer[i].rate) / 100, min, max);
@@ -883,7 +916,7 @@ bool isMixerUsingServos(void) {
 
 void filterServos(void)
 {
-    uint8_t servoIdx;
+    int servoIdx;
 
     if (mixerConfig->servo_lowpass_enable) {
         // Initialize servo lowpass filter (servos are calculated at looptime rate)

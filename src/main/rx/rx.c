@@ -22,8 +22,10 @@
 #include <string.h>
 
 #include "platform.h"
-#include "build_config.h"
-#include "debug.h"
+#include "build/build_config.h"
+
+#include "build/debug.h"
+
 
 
 #include "common/maths.h"
@@ -34,7 +36,8 @@
 #include "drivers/adc.h"
 
 #include "io/serial.h"
-#include "io/rc_controls.h"
+#include "fc/rc_controls.h"
+
 
 #include "flight/failsafe.h"
 
@@ -52,9 +55,11 @@
 #include "rx/msp.h"
 #include "rx/xbus.h"
 #include "rx/ibus.h"
+#include "rx/jetiexbus.h"
 #include "rx/nrf24.h"
 
 #include "rx/rx.h"
+
 
 //#define DEBUG_RX_SIGNAL_LOSS
 
@@ -205,6 +210,7 @@ void rxInit(rxConfig_t *rxConfig, modeActivationCondition_t *modeActivationCondi
         rxPwmInit(&rxRuntimeConfig, &rcReadRawFunc);
     }
 #endif
+
     rxRuntimeConfig.auxChannelCount = rxRuntimeConfig.channelCount - STICK_CHANNEL_COUNT;
 }
 
@@ -239,7 +245,12 @@ void serialRxInit(rxConfig_t *rxConfig)
             enabled = xBusInit(rxConfig, &rxRuntimeConfig, &rcReadRawFunc);
             break;
         case SERIALRX_IBUS:
+            rxRefreshRate = 20000; // TODO - Verify speed
             enabled = ibusInit(rxConfig, &rxRuntimeConfig, &rcReadRawFunc);
+            break;
+        case SERIALRX_JETIEXBUS:
+            rxRefreshRate = 5500;
+            enabled = jetiExBusInit(rxConfig, &rxRuntimeConfig, &rcReadRawFunc);
             break;
     }
 
@@ -275,6 +286,8 @@ uint8_t serialRxFrameStatus(rxConfig_t *rxConfig)
             return xBusFrameStatus();
         case SERIALRX_IBUS:
             return ibusFrameStatus();
+        case SERIALRX_JETIEXBUS:
+            return jetiExBusFrameStatus();
     }
     return SERIAL_RX_FRAME_PENDING;
 }
@@ -363,7 +376,6 @@ void updateRx(uint32_t currentTime)
 #ifndef SKIP_RX_MSP
     if (feature(FEATURE_RX_MSP)) {
         rxDataReceived = rxMspFrameComplete();
-
         if (rxDataReceived) {
             rxSignalReceived = true;
             rxIsInFailsafeMode = false;
@@ -595,12 +607,12 @@ void updateRSSIPWM(void)
     int16_t pwmRssi = 0;
     // Read value of AUX channel as rssi
     pwmRssi = rcData[rxConfig->rssi_channel - 1];
-	
-	// RSSI_Invert option	
-	if (rxConfig->rssi_ppm_invert) {
-	    pwmRssi = ((2000 - pwmRssi) + 1000);
-	}
-	
+
+    // RSSI_Invert option
+    if (rxConfig->rssi_ppm_invert) {
+        pwmRssi = ((2000 - pwmRssi) + 1000);
+    }
+
     // Range of rawPwmRssi is [1000;2000]. rssi should be in [0;1023];
     rssi = (uint16_t)((constrain(pwmRssi - 1000, 0, 1000) / 1000.0f) * 1023.0f);
 }
