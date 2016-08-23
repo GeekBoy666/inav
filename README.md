@@ -2,7 +2,7 @@
 
 ![INAV](http://static.rcgroups.net/forums/attachments/6/1/0/3/7/6/a9088858-102-inav.png)
 
-[![Join the chat at https://gitter.im/iNavFlight/inav](https://badges.gitter.im/iNavFlight/inav.svg)](https://gitter.im/iNavFlight/inav?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) ![Travis CI status](https://travis-ci.org/iNavFlight/inav.svg?branch=master)
+[![Join the chat at https://gitter.im/iNavFlight/inav](https://badges.gitter.im/iNavFlight/inav.svg)](https://gitter.im/iNavFlight/inav?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/npsm/inav.svg?branch=master)](https://travis-ci.org/npsm/inav)
 
 Clean-code version of baseflight flight-controller with improved navigational capabilities - flight controllers are used to fly multi-rotor craft and fixed wing craft.
 
