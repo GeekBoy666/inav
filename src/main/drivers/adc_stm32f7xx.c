@@ -22,7 +22,9 @@
 #include "platform.h"
 #include "system.h"
 
-#include "gpio.h"
+#include "io.h"
+#include "io_impl.h"
+#include "rcc.h"
 
 #include "sensors/sensors.h" // FIXME dependency into the main code
 
@@ -34,6 +36,36 @@
 
 static ADC_HandleTypeDef    AdcHandle_1;
 static DMA_HandleTypeDef    hdma_adc_1;
+
+/* note these could be packed up for saving space */
+const adcTagMap_t adcTagMap[] = {
+/*
+    { DEFIO_TAG_E__PF3,  ADC_Channel_9  },
+    { DEFIO_TAG_E__PF4,  ADC_Channel_14 },
+    { DEFIO_TAG_E__PF5,  ADC_Channel_15 },
+    { DEFIO_TAG_E__PF6,  ADC_Channel_4  },
+    { DEFIO_TAG_E__PF7,  ADC_Channel_5  },
+    { DEFIO_TAG_E__PF8,  ADC_Channel_6  },
+    { DEFIO_TAG_E__PF9,  ADC_Channel_7  },
+    { DEFIO_TAG_E__PF10, ADC_Channel_8  },
+*/
+    { DEFIO_TAG_E__PC0, ADC_CHANNEL_10 },
+    { DEFIO_TAG_E__PC1, ADC_CHANNEL_11 },
+    { DEFIO_TAG_E__PC2, ADC_CHANNEL_12 },
+    { DEFIO_TAG_E__PC3, ADC_CHANNEL_13 },
+    { DEFIO_TAG_E__PC4, ADC_CHANNEL_14 },
+    { DEFIO_TAG_E__PC5, ADC_CHANNEL_15 },
+    { DEFIO_TAG_E__PB0, ADC_CHANNEL_8  },
+    { DEFIO_TAG_E__PB1, ADC_CHANNEL_9  },
+    { DEFIO_TAG_E__PA0, ADC_CHANNEL_0  },
+    { DEFIO_TAG_E__PA1, ADC_CHANNEL_1  },
+    { DEFIO_TAG_E__PA2, ADC_CHANNEL_2  },
+    { DEFIO_TAG_E__PA3, ADC_CHANNEL_3  },
+    { DEFIO_TAG_E__PA4, ADC_CHANNEL_4  },
+    { DEFIO_TAG_E__PA5, ADC_CHANNEL_5  },
+    { DEFIO_TAG_E__PA6, ADC_CHANNEL_6  },
+    { DEFIO_TAG_E__PA7, ADC_CHANNEL_7  },
+};
 
 void MCU_ADC1_DMA_IRQHandler(void)
 {
@@ -47,60 +79,29 @@ void adcInit(drv_adc_config_t *init)
 
     memset(&adcConfig, 0, sizeof(adcConfig));
 
-    GPIO_InitTypeDef GPIO_InitStruct;
-    GPIO_InitStruct.Alternate = 0xFF;
-    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-
-#ifdef VBAT_ADC_GPIO
+#ifdef VBAT_ADC_PIN
     if (init->enableVBat) {
-        GPIO_InitStruct.Pin = VBAT_ADC_GPIO_PIN;
-        HAL_GPIO_Init(VBAT_ADC_GPIO, &GPIO_InitStruct);
-        
-        adcConfig[ADC_BATTERY].adcChannel = VBAT_ADC_CHANNEL;
-        adcConfig[ADC_BATTERY].dmaIndex = configuredAdcChannels++;
-        adcConfig[ADC_BATTERY].enabled = true;
-        adcConfig[ADC_BATTERY].sampleTime = ADC_SAMPLETIME_480CYCLES;
+        adcConfig[ADC_BATTERY].tag = IO_TAG(VBAT_ADC_PIN); //VBAT_ADC_CHANNEL;
     }
 #endif
 
-#ifdef EXTERNAL1_ADC_GPIO
-    if (init->enableExternal1) {
-        GPIO_InitStruct.Pin = EXTERNAL1_ADC_GPIO_PIN;
-        HAL_GPIO_Init(EXTERNAL1_ADC_GPIO, &GPIO_InitStruct);
-        
-        adcConfig[ADC_EXTERNAL1].adcChannel = EXTERNAL1_ADC_CHANNEL;
-        adcConfig[ADC_EXTERNAL1].dmaIndex = configuredAdcChannels++;
-        adcConfig[ADC_EXTERNAL1].enabled = true;
-        adcConfig[ADC_EXTERNAL1].sampleTime = ADC_SAMPLETIME_480CYCLES;
-    }
-#endif
-
-#ifdef RSSI_ADC_GPIO
+#ifdef RSSI_ADC_PIN
     if (init->enableRSSI) {
-        GPIO_InitStruct.Pin = RSSI_ADC_GPIO_PIN;
-        HAL_GPIO_Init(RSSI_ADC_GPIO, &GPIO_InitStruct);
-        
-        adcConfig[ADC_RSSI].adcChannel = RSSI_ADC_CHANNEL;
-        adcConfig[ADC_RSSI].dmaIndex = configuredAdcChannels++;
-        adcConfig[ADC_RSSI].enabled = true;
-        adcConfig[ADC_RSSI].sampleTime = ADC_SAMPLETIME_480CYCLES;
+        adcConfig[ADC_RSSI].tag = IO_TAG(RSSI_ADC_PIN);  //RSSI_ADC_CHANNEL;
     }
 #endif
 
-#ifdef CURRENT_METER_ADC_GPIO
+#ifdef EXTERNAL1_ADC_PIN
+    if (init->enableExternal1) {
+        adcConfig[ADC_EXTERNAL1].tag = IO_TAG(EXTERNAL1_ADC_PIN); //EXTERNAL1_ADC_CHANNEL;
+    }
+#endif
+
+#ifdef CURRENT_METER_ADC_PIN
     if (init->enableCurrentMeter) {
-        GPIO_InitStruct.Pin   = CURRENT_METER_ADC_GPIO_PIN;
-        HAL_GPIO_Init(CURRENT_METER_ADC_GPIO, &GPIO_InitStruct);
-        
-        adcConfig[ADC_CURRENT].adcChannel = CURRENT_METER_ADC_CHANNEL;
-        adcConfig[ADC_CURRENT].dmaIndex = configuredAdcChannels++;
-        adcConfig[ADC_CURRENT].enabled = true;
-        adcConfig[ADC_CURRENT].sampleTime = ADC_SAMPLETIME_480CYCLES;
+        adcConfig[ADC_CURRENT].tag = IO_TAG(CURRENT_METER_ADC_PIN);  //CURRENT_METER_ADC_CHANNEL;
     }
 #endif
-
     __HAL_RCC_DMA2_CLK_ENABLE();
     __HAL_RCC_ADC1_CLK_ENABLE();
     
@@ -153,10 +154,12 @@ void adcInit(drv_adc_config_t *init)
             continue;
         }
         
+        IOInit(IOGetByTag(adcConfig[i].tag), OWNER_ADC, RESOURCE_ADC_BATTERY + i, 0);
+        IOConfigGPIO(IOGetByTag(adcConfig[i].tag), IO_CONFIG(GPIO_Mode_AN, 0, GPIO_OType_OD, GPIO_PuPd_NOPULL));
         ADC_ChannelConfTypeDef sConfig;        
-        sConfig.Channel      = adcConfig[i].adcChannel;
+        sConfig.Channel      = adcChannelByTag(adcConfig[i].tag);
         sConfig.Rank         = rank++;
-        sConfig.SamplingTime = adcConfig[i].sampleTime;
+        sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
         sConfig.Offset       = 0;
         HAL_ADC_ConfigChannel(&AdcHandle_1, &sConfig);
     }

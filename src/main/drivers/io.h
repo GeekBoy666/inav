@@ -50,7 +50,7 @@
 #define GPIO_Mode_IN        0
 #define GPIO_Mode_OUT       1
 #define GPIO_Mode_AF        2
-#define GPIO_Mode_Analog    3
+#define GPIO_Mode_AN        3
 
 #define GPIO_OType_PP       0
 #define GPIO_OType_OD       1

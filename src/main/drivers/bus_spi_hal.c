@@ -20,37 +20,58 @@
 
 #include <platform.h>
 
-#include "build_config.h"
-
-#include "gpio.h"
-
 #include "bus_spi.h"
+#include "exti.h"
+#include "io.h"
+#include "io_impl.h"
+#include "rcc.h"
 
-typedef struct spiDevice_t {
-    SPI_TypeDef *dev;
-    uint8_t GpioAf;
-    GPIO_TypeDef *gpioSck;
-    uint16_t Sck;
-    GPIO_TypeDef *gpioNss;
-    uint16_t Nss;
-    GPIO_TypeDef *gpioMiso;
-    uint16_t Miso;
-    GPIO_TypeDef *gpioMosi;
-    uint16_t Mosi;
-    uint8_t irq;
-    uint32_t speed[3];
-} spiDevice_t;
+//typedef struct spiDevice_t {
+//    SPI_TypeDef *dev;
+//    uint8_t GpioAf;
+//    GPIO_TypeDef *gpioSck;
+//    uint16_t Sck;
+//    GPIO_TypeDef *gpioNss;
+//    uint16_t Nss;
+//    GPIO_TypeDef *gpioMiso;
+//    uint16_t Miso;
+//    GPIO_TypeDef *gpioMosi;
+//    uint16_t Mosi;
+//    uint8_t irq;
+//    uint32_t speed[3];
+//} spiDevice_t;
 
-static const spiDevice_t spiHardwareMap[] = {
-    { SPI1, MCU_SPI1_AF ,SPI1_SCK_GPIO, SPI1_SCK_PIN, SPI1_NSS_GPIO, SPI1_NSS_PIN, SPI1_MISO_GPIO, SPI1_MISO_PIN, SPI1_MOSI_GPIO, SPI1_MOSI_PIN, SPI1_IRQn, MCU_SPI1_SPEED},
-    { SPI2, MCU_SPI2_AF ,SPI2_SCK_GPIO, SPI2_SCK_PIN, SPI2_NSS_GPIO, SPI2_NSS_PIN, SPI2_MISO_GPIO, SPI2_MISO_PIN, SPI2_MOSI_GPIO, SPI2_MOSI_PIN, SPI2_IRQn, MCU_SPI2_SPEED},
-    { SPI3, MCU_SPI3_AF ,SPI3_SCK_GPIO, SPI3_SCK_PIN, SPI3_NSS_GPIO, SPI3_NSS_PIN, SPI3_MISO_GPIO, SPI3_MISO_PIN, SPI3_MOSI_GPIO, SPI3_MOSI_PIN, SPI3_IRQn, MCU_SPI3_SPEED},
+//static const spiDevice_t spiHardwareMap[] = {
+//    { SPI1, MCU_SPI1_AF ,SPI1_SCK_GPIO, SPI1_SCK_PIN, SPI1_NSS_GPIO, SPI1_NSS_PIN, SPI1_MISO_GPIO, SPI1_MISO_PIN, SPI1_MOSI_GPIO, SPI1_MOSI_PIN, SPI1_IRQn, MCU_SPI1_SPEED},
+//    { SPI2, MCU_SPI2_AF ,SPI2_SCK_GPIO, SPI2_SCK_PIN, SPI2_NSS_GPIO, SPI2_NSS_PIN, SPI2_MISO_GPIO, SPI2_MISO_PIN, SPI2_MOSI_GPIO, SPI2_MOSI_PIN, SPI2_IRQn, MCU_SPI2_SPEED},
+//    { SPI3, MCU_SPI3_AF ,SPI3_SCK_GPIO, SPI3_SCK_PIN, SPI3_NSS_GPIO, SPI3_NSS_PIN, SPI3_MISO_GPIO, SPI3_MISO_PIN, SPI3_MOSI_GPIO, SPI3_MOSI_PIN, SPI3_IRQn, MCU_SPI3_SPEED},
+//};
+
+static spiDevice_t spiHardwareMap[] = {
+    { .dev = SPI1, .nss = IO_TAG(SPI1_NSS_PIN), .sck = IO_TAG(SPI1_SCK_PIN), .miso = IO_TAG(SPI1_MISO_PIN), .mosi = IO_TAG(SPI1_MOSI_PIN), .rcc = RCC_APB2(SPI1), .af = MCU_SPI1_AF, false },
+    { .dev = SPI2, .nss = IO_TAG(SPI2_NSS_PIN), .sck = IO_TAG(SPI2_SCK_PIN), .miso = IO_TAG(SPI2_MISO_PIN), .mosi = IO_TAG(SPI2_MOSI_PIN), .rcc = RCC_APB1(SPI2), .af = MCU_SPI2_AF, false },
+    { .dev = SPI3, .nss = IO_TAG(SPI3_NSS_PIN), .sck = IO_TAG(SPI3_SCK_PIN), .miso = IO_TAG(SPI3_MISO_PIN), .mosi = IO_TAG(SPI3_MOSI_PIN), .rcc = RCC_APB1(SPI3), .af = MCU_SPI3_AF, false }
 };
+
 
 typedef struct{
     SPI_HandleTypeDef Handle;
 }spiHandle_t;
 static spiHandle_t spiHandle[SPIDEV_MAX];
+
+SPIDevice spiDeviceByInstance(SPI_TypeDef *instance)
+{
+    if (instance == SPI1)
+        return SPIDEV_1;
+
+    if (instance == SPI2)
+        return SPIDEV_2;
+
+    if (instance == SPI3)
+        return SPIDEV_3;
+
+    return SPIINVALID;
+}
 
 
 uint32_t spiErrorCount[SPIDEV_MAX];
@@ -71,63 +92,85 @@ void SPI3_IRQHandler(void)
 }
 
 
-bool SpiInitX(SPIDevice bus, uint32_t speed)
+bool spiInitDevice(SPIDevice device, uint32_t divisor)
 {
-    spiHandle[bus].Handle.Instance = spiHardwareMap[bus].dev;
-    spiHandle[bus].Handle.Init.Mode = SPI_MODE_MASTER;
-    spiHandle[bus].Handle.Init.Direction = SPI_DIRECTION_2LINES;
-    spiHandle[bus].Handle.Init.DataSize = SPI_DATASIZE_8BIT;
-    spiHandle[bus].Handle.Init.NSS = SPI_NSS_SOFT;
-    spiHandle[bus].Handle.Init.FirstBit = SPI_FIRSTBIT_MSB;
-    spiHandle[bus].Handle.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-    spiHandle[bus].Handle.Init.CRCPolynomial = 7;
-    spiHandle[bus].Handle.Init.CLKPolarity = SPI_POLARITY_HIGH;
-    spiHandle[bus].Handle.Init.CLKPhase = SPI_PHASE_2EDGE;
-    spiHandle[bus].Handle.Init.BaudRatePrescaler = spiHardwareMap[bus].speed[speed];
-    spiHandle[bus].Handle.Init.TIMode = SPI_TIMODE_DISABLED;
+    spiDevice_t *spi = &(spiHardwareMap[device]);
 
-    HAL_SPI_DeInit(&spiHandle[bus].Handle);
-    return (HAL_SPI_Init(&spiHandle[bus].Handle) == HAL_OK);
+    spiHandle[device].Handle.Instance = spi->dev;
+    spiHandle[device].Handle.Init.Mode = SPI_MODE_MASTER;
+    spiHandle[device].Handle.Init.Direction = SPI_DIRECTION_2LINES;
+    spiHandle[device].Handle.Init.DataSize = SPI_DATASIZE_8BIT;
+    spiHandle[device].Handle.Init.NSS = SPI_NSS_SOFT;
+    spiHandle[device].Handle.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    spiHandle[device].Handle.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    spiHandle[device].Handle.Init.CRCPolynomial = 7;
+    spiHandle[device].Handle.Init.CLKPolarity = SPI_POLARITY_HIGH;
+    spiHandle[device].Handle.Init.CLKPhase = SPI_PHASE_2EDGE;
+    spiHandle[device].Handle.Init.BaudRatePrescaler = divisor;
+    spiHandle[device].Handle.Init.TIMode = SPI_TIMODE_DISABLED;
+
+    HAL_SPI_DeInit(&spiHandle[device].Handle);
+    return (HAL_SPI_Init(&spiHandle[device].Handle) == HAL_OK);
 }
 
-bool spiInit(SPIDevice bus)
+bool spiInit(SPIDevice device)
 {
-#define __SPI_INIT__(x)\
-    __HAL_RCC_SPI##x##_CLK_ENABLE(); \
-    __HAL_RCC_SPI##x##_FORCE_RESET(); \
-    __HAL_RCC_SPI##x##_RELEASE_RESET(); \
-    
-    // Enable SPI1 clock
-    switch (bus) {
-    case SPIDEV_1:
-        __SPI_INIT__(1);
-        break;
-    case SPIDEV_2:
-        __SPI_INIT__(2);
-        break;
-    case SPIDEV_3:
-        __SPI_INIT__(3);
-        break;
-    default:
-        return false;
-        break;
-    }
-#undef __SPI_INIT__
-    
-    GPIO_InitTypeDef  GPIO_InitStruct;
-    GPIO_InitStruct.Pin       = spiHardwareMap[bus].Sck;
-    GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull      = GPIO_PULLDOWN;
-    GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = spiHardwareMap[bus].GpioAf;
-    HAL_GPIO_Init(spiHardwareMap[bus].gpioSck, &GPIO_InitStruct);
+    spiDevice_t *spi = &(spiHardwareMap[device]);
 
-    GPIO_InitStruct.Pin       = spiHardwareMap[bus].Mosi;
-    HAL_GPIO_Init(spiHardwareMap[bus].gpioMosi, &GPIO_InitStruct);
+#ifdef SDCARD_SPI_INSTANCE
+    if (spi->dev == SDCARD_SPI_INSTANCE) {
+        spi->sdcard = true;
+    }
+#endif
+#ifdef NRF24_SPI_INSTANCE
+    if (spi->dev == NRF24_SPI_INSTANCE) {
+        spi->nrf24l01 = true;
+    }
+#endif
     
-    GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
-    GPIO_InitStruct.Pin       = spiHardwareMap[bus].Miso;
-    HAL_GPIO_Init(spiHardwareMap[bus].gpioMiso, &GPIO_InitStruct);
+    // Enable SPI clock
+    RCC_ClockCmd(spi->rcc, ENABLE);
+    RCC_ResetCmd(spi->rcc, ENABLE);
+
+    IOInit(IOGetByTag(spi->sck),  OWNER_SPI, RESOURCE_SPI_SCK,  device + 1);
+    IOInit(IOGetByTag(spi->miso), OWNER_SPI, RESOURCE_SPI_MISO, device + 1);
+    IOInit(IOGetByTag(spi->mosi), OWNER_SPI, RESOURCE_SPI_MOSI, device + 1);
+    
+    IOConfigGPIOAF(IOGetByTag(spi->sck),  SPI_IO_AF_CFG, spi->af);
+    IOConfigGPIOAF(IOGetByTag(spi->miso), SPI_IO_AF_CFG, spi->af);
+    IOConfigGPIOAF(IOGetByTag(spi->mosi), SPI_IO_AF_CFG, spi->af);
+
+    if (spi->nss) {
+        IOConfigGPIOAF(IOGetByTag(spi->nss), SPI_IO_CS_CFG, spi->af);
+    }
+    
+    switch (device)
+    {
+    case SPIINVALID:
+        return false;
+    case SPIDEV_1:
+#ifdef USE_SPI_DEVICE_1
+        spiInitDevice(device, SPI_BAUDRATEPRESCALER_8);
+        return true;
+#else
+        break;
+#endif
+    case SPIDEV_2:
+#ifdef USE_SPI_DEVICE_2
+        spiInitDevice(device, SPI_BAUDRATEPRESCALER_8);
+        return true;
+#else
+        break;
+#endif
+    case SPIDEV_3:
+#ifdef USE_SPI_DEVICE_3
+        spiInitDevice(device, SPI_BAUDRATEPRESCALER_8);
+        return true;
+#else
+        break;
+#endif
+    }
+    return false;
     
     /// TODO: HAL Implement hardware nss handling
 #if 0
@@ -144,48 +187,90 @@ uint32_t spiTimeoutUserCallback(SPIDevice instance)
 }
 
 // return uint8_t value or -1 when failure
-uint8_t spiTransferByte(SPIDevice instance, uint8_t data)
+uint8_t spiTransferByte(SPI_TypeDef *instance, uint8_t data)
 {
     spiTransfer(instance, &data, &data, 1);
     return data;
 }
 
-bool spiTransfer(SPIDevice instance, uint8_t *out, const uint8_t *in, int len)
+bool spiTransfer(SPI_TypeDef *instance, uint8_t *out, const uint8_t *in, int len)
 {
     HAL_StatusTypeDef status;
+    SPIDevice device = spiDeviceByInstance(instance);
     
     if(!out) // Tx only
     {
-        status = HAL_SPI_Transmit(&spiHandle[instance].Handle, (uint8_t *)in, len, SPI_DEFAULT_TIMEOUT);        
+        status = HAL_SPI_Transmit(&spiHandle[device].Handle, (uint8_t *)in, len, SPI_DEFAULT_TIMEOUT);        
     } 
     else if(!in) // Rx only
     {
-        status = HAL_SPI_Receive(&spiHandle[instance].Handle, out, len, SPI_DEFAULT_TIMEOUT);
+        status = HAL_SPI_Receive(&spiHandle[device].Handle, out, len, SPI_DEFAULT_TIMEOUT);
     }
     else // Tx and Rx
     {
-        status = HAL_SPI_TransmitReceive(&spiHandle[instance].Handle, (uint8_t *)in, out, len, SPI_DEFAULT_TIMEOUT);
+        status = HAL_SPI_TransmitReceive(&spiHandle[device].Handle, (uint8_t *)in, out, len, SPI_DEFAULT_TIMEOUT);
     }
     
     if( status != HAL_OK)
-        spiTimeoutUserCallback(instance);
+        spiTimeoutUserCallback(device);
     
     return true;
 }
 
 
-void spiSetDivisor(SPIDevice instance, SpiSpeed_t speed)
+void spiSetDivisor(SPI_TypeDef *instance, uint16_t divisor)
 {
-    SpiInitX(instance, speed);
+    SPIDevice device = spiDeviceByInstance(instance);
+    uint32_t prescaler = SPI_BAUDRATEPRESCALER_8;
+    
+    switch (divisor) {
+    case 2:
+        prescaler = SPI_BAUDRATEPRESCALER_2;
+        break;
+
+    case 4:
+        prescaler = SPI_BAUDRATEPRESCALER_4;
+        break;
+
+    case 8:
+        prescaler = SPI_BAUDRATEPRESCALER_8;
+        break;
+
+    case 16:
+        prescaler = SPI_BAUDRATEPRESCALER_16;
+        break;
+
+    case 32:
+        prescaler = SPI_BAUDRATEPRESCALER_32;
+        break;
+
+    case 64:
+        prescaler = SPI_BAUDRATEPRESCALER_64;
+        break;
+
+    case 128:
+        prescaler = SPI_BAUDRATEPRESCALER_128;
+        break;
+
+    case 256:
+        prescaler = SPI_BAUDRATEPRESCALER_256;
+    }
+    
+    spiInitDevice(device, prescaler);
 }
 
-uint16_t spiGetErrorCounter(SPIDevice instance)
+uint16_t spiGetErrorCounter(SPI_TypeDef *instance)
 {
-    return spiErrorCount[instance];
+    SPIDevice device = spiDeviceByInstance(instance);
+    if (device == SPIINVALID)
+        return 0;
+    return spiHardwareMap[device].errorCount;
 }
 
-void spiResetErrorCounter(SPIDevice instance)
+void spiResetErrorCounter(SPI_TypeDef *instance)
 {
-    spiErrorCount[instance] = 0;
+    SPIDevice device = spiDeviceByInstance(instance);
+    if (device != SPIINVALID)
+        spiHardwareMap[device].errorCount = 0;
 }
 

@@ -27,6 +27,7 @@
 
 static TIM_HandleTypeDef ledTimHandle;
 static DMA_HandleTypeDef ledDmaHandle;
+bool ws2811Initialised = false;
 
 void ws2811LedStripHardwareInit(void)
 {
@@ -92,6 +93,8 @@ void ws2811LedStripHardwareInit(void)
 //    DMA_InitStructure.DMA_BufferSize = WS2811_DMA_BUFFER_SIZE;
 
 
+    const hsvColor_t hsv_white = {  0, 255, 255};
+    ws2811Initialised = true;
     setStripColor(&hsv_white);
     ws2811UpdateStrip();
 }
@@ -104,6 +107,9 @@ void LED_STRIP_DMA_IRQHandler(void)
 
 void ws2811LedStripDMAEnable(void)
 {
+    if (!ws2811Initialised)
+        return;
+    
     __HAL_TIM_SET_COUNTER(&ledTimHandle, 0);
     HAL_TIM_PWM_Start_DMA(&ledTimHandle, LED_STRIP_TIMER_CHANNEL, (uint32_t*)ledStripDMABuffer, WS2811_DMA_BUFFER_SIZE);
 }

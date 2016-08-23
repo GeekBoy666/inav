@@ -20,7 +20,7 @@
 
 #include <platform.h>
 
-#include "build_config.h"
+//#include "build_config.h"
 
 #include "gpio.h"
 #include "system.h"
@@ -30,26 +30,37 @@
 
 #ifndef SOFT_I2C
 
-static void i2cUnstick(I2CDevice bus);
+//typedef struct i2cDevice_t {
+//    I2C_TypeDef *dev;
+//    uint8_t GpioAf;
+//    GPIO_TypeDef *gpioscl;
+//    uint16_t scl;
+//    GPIO_TypeDef *gpiosda;
+//    uint16_t sda;
+//    uint8_t ev_irq;
+//    uint8_t er_irq;
+//    uint32_t clk;
+//    uint32_t clk_src;
+//} i2cDevice_t;
 
-typedef struct i2cDevice_t {
-    I2C_TypeDef *dev;
-    uint8_t GpioAf;
-    GPIO_TypeDef *gpioscl;
-    uint16_t scl;
-    GPIO_TypeDef *gpiosda;
-    uint16_t sda;
-    uint8_t ev_irq;
-    uint8_t er_irq;
-    uint32_t clk;
-    uint32_t clk_src;
-} i2cDevice_t;
+//static const i2cDevice_t i2cHardwareMap[] = {
+//    { I2C1, MCU_I2C1_AF ,I2C1_SCL_GPIO, I2C1_SCL_PIN, I2C1_SDA_GPIO, I2C1_SDA_PIN, I2C1_EV_IRQn, I2C1_ER_IRQn, RCC_PERIPHCLK_I2C1, RCC_I2C1CLKSOURCE_SYSCLK },
+//    { I2C2, MCU_I2C2_AF ,I2C2_SCL_GPIO, I2C2_SCL_PIN, I2C2_SDA_GPIO, I2C2_SDA_PIN, I2C2_EV_IRQn, I2C2_ER_IRQn, RCC_PERIPHCLK_I2C2, RCC_I2C2CLKSOURCE_SYSCLK },
+//    { I2C3, MCU_I2C3_AF ,I2C3_SCL_GPIO, I2C3_SCL_PIN, I2C3_SDA_GPIO, I2C3_SDA_PIN, I2C3_EV_IRQn, I2C3_ER_IRQn, RCC_PERIPHCLK_I2C3, RCC_I2C3CLKSOURCE_SYSCLK },
+//};
 
-static const i2cDevice_t i2cHardwareMap[] = {
-    { I2C1, MCU_I2C1_AF ,I2C1_SCL_GPIO, I2C1_SCL_PIN, I2C1_SDA_GPIO, I2C1_SDA_PIN, I2C1_EV_IRQn, I2C1_ER_IRQn, RCC_PERIPHCLK_I2C1, RCC_I2C1CLKSOURCE_SYSCLK },
-    { I2C2, MCU_I2C2_AF ,I2C2_SCL_GPIO, I2C2_SCL_PIN, I2C2_SDA_GPIO, I2C2_SDA_PIN, I2C2_EV_IRQn, I2C2_ER_IRQn, RCC_PERIPHCLK_I2C2, RCC_I2C2CLKSOURCE_SYSCLK },
-    { I2C3, MCU_I2C3_AF ,I2C3_SCL_GPIO, I2C3_SCL_PIN, I2C3_SDA_GPIO, I2C3_SDA_PIN, I2C3_EV_IRQn, I2C3_ER_IRQn, RCC_PERIPHCLK_I2C3, RCC_I2C3CLKSOURCE_SYSCLK },
+#if defined(USE_I2C_PULLUP)
+#define IOCFG_I2C IO_CONFIG(GPIO_Mode_AF, GPIO_SPEED_FAST, GPIO_OType_OD, GPIO_PuPd_UP)
+#else
+#define IOCFG_I2C IO_CONFIG(GPIO_Mode_AF, GPIO_SPEED_FAST, GPIO_OType_OD, GPIO_PuPd_NOPULL)
+#endif
+
+
+static i2cDevice_t i2cHardwareMap[] = {
+    { .dev = I2C1, .scl = IO_TAG(I2C1_SCL), .sda = IO_TAG(I2C1_SDA), .rcc = RCC_APB1(I2C1), .overClock = I2C1_OVERCLOCK },
+    { .dev = I2C2, .scl = IO_TAG(I2C2_SCL), .sda = IO_TAG(I2C2_SDA), .rcc = RCC_APB1(I2C2), .overClock = I2C2_OVERCLOCK }
 };
+
 
 typedef struct{
     I2C_HandleTypeDef Handle;
@@ -103,9 +114,8 @@ static bool i2cHandleHardwareFailure(I2CDevice bus)
     return false;
 }
 
-bool i2cWriteBuffer(uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data)
+bool i2cWriteBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data)
 {
-    I2CDevice bus = I2C_DEVICE;
     HAL_StatusTypeDef status;
     
     if(reg_ == 0xFF)
@@ -114,44 +124,44 @@ bool i2cWriteBuffer(uint8_t addr_, uint8_t reg_, uint8_t len_, uint8_t *data)
         status = HAL_I2C_Mem_Write(&i2cHandle[I2CDEV_MAX].Handle,addr_ << 1, reg_, I2C_MEMADD_SIZE_8BIT,data, len_, I2C_DEFAULT_TIMEOUT);
         
     if(status != HAL_OK)
-        return i2cHandleHardwareFailure(bus);
+        return i2cHandleHardwareFailure(device);
     
     return true;
 }
 
-bool i2cWrite(uint8_t addr_, uint8_t reg_, uint8_t data)
+bool i2cWrite(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t data)
 {
-    return i2cWriteBuffer(addr_, reg_, 1, &data);
+    return i2cWriteBuffer(device, addr_, reg_, 1, &data);
 }
 
-bool i2cRead(uint8_t addr_, uint8_t reg_, uint8_t len, uint8_t* buf)
+bool i2cRead(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len, uint8_t* buf)
 {
-    I2CDevice bus = I2C_DEVICE;
     HAL_StatusTypeDef status;
     
     if(reg_ == 0xFF)
-        status = HAL_I2C_Master_Receive(&i2cHandle[I2CDEV_MAX].Handle,addr_ << 1,buf, len, I2C_DEFAULT_TIMEOUT);
+        status = HAL_I2C_Master_Receive(&i2cHandle[device].Handle,addr_ << 1,buf, len, I2C_DEFAULT_TIMEOUT);
     else
-        status = HAL_I2C_Mem_Write(&i2cHandle[I2CDEV_MAX].Handle,addr_ << 1, reg_, I2C_MEMADD_SIZE_8BIT,buf, len, I2C_DEFAULT_TIMEOUT);
+        status = HAL_I2C_Mem_Write(&i2cHandle[device].Handle,addr_ << 1, reg_, I2C_MEMADD_SIZE_8BIT,buf, len, I2C_DEFAULT_TIMEOUT);
         
     if(status != HAL_OK)
-        return i2cHandleHardwareFailure(bus);
+        return i2cHandleHardwareFailure(device);
     
     return true;
 }
 
-void i2cInit(I2CDevice bus)
+void i2cInit(I2CDevice device)
 {
-    if (bus > I2CDEV_MAX)
-        bus = I2CDEV_MAX;
+    i2cDevice_t *i2c;
+    i2c = &(i2cHardwareMap[device]);
 
-    /*## Configure the I2C clock source. The clock is derived from the SYSCLK #*/
-    RCC_PeriphCLKInitTypeDef  RCC_PeriphCLKInitStruct;
-    RCC_PeriphCLKInitStruct.PeriphClockSelection = i2cHardwareMap[bus].clk;
-    RCC_PeriphCLKInitStruct.I2c1ClockSelection = i2cHardwareMap[bus].clk_src;
-    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphCLKInitStruct);
+    I2C_TypeDef *I2Cx;
+    I2Cx = i2c->dev;
+  
+    IO_t scl = IOGetByTag(i2c->scl);
+    IO_t sda = IOGetByTag(i2c->sda);
 
-    switch (bus) {
+    RCC_ClockCmd(i2c->rcc, ENABLE);
+    switch (device) {
     case I2CDEV_1:
         __HAL_RCC_I2C1_CLK_ENABLE();
         break;
@@ -165,110 +175,39 @@ void i2cInit(I2CDevice bus)
         break;
     }
 
-    // clock out stuff to make sure slaves arent stuck
-    // This will also configure GPIO as AF_OD at the end
-    i2cUnstick(bus);
-    
-    GPIO_InitTypeDef  GPIO_InitStruct;
-    GPIO_InitStruct.Pin       = i2cHardwareMap[bus].scl;
-    GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
-    GPIO_InitStruct.Pull      = GPIO_PULLUP;
-    GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = i2cHardwareMap[bus].GpioAf;
-    HAL_GPIO_Init(i2cHardwareMap[bus].gpioscl, &GPIO_InitStruct);
+    IOInit(scl, OWNER_I2C, RESOURCE_I2C_SCL, RESOURCE_INDEX(device));
+    IOConfigGPIOAF(scl, IOCFG_I2C, MCU_I2C_AF);
 
-    GPIO_InitStruct.Pin       = i2cHardwareMap[bus].sda;
-    HAL_GPIO_Init(i2cHardwareMap[bus].gpiosda, &GPIO_InitStruct);
-
+    IOInit(sda, OWNER_I2C, RESOURCE_I2C_SDA, RESOURCE_INDEX(device));
+    IOConfigGPIOAF(sda, IOCFG_I2C, MCU_I2C_AF);
 
     // Init I2C peripheral
-    HAL_I2C_DeInit(&i2cHandle[bus].Handle);
+    HAL_I2C_DeInit(&i2cHandle[device].Handle);
     
-    i2cHandle[bus].Handle.Instance             = i2cHardwareMap[bus].dev;
+    i2cHandle[device].Handle.Instance             = i2cHardwareMap[device].dev;
     /// TODO: HAL check if I2C timing is correct
-    i2cHandle[bus].Handle.Init.Timing          = 0x00D00E28; /* (Rise time = 120ns, Fall time = 25ns) */ 
-    i2cHandle[bus].Handle.Init.OwnAddress1     = 0xFF;
-    i2cHandle[bus].Handle.Init.AddressingMode  = I2C_ADDRESSINGMODE_7BIT;
-    i2cHandle[bus].Handle.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    i2cHandle[bus].Handle.Init.OwnAddress2     = 0xFF;
-    i2cHandle[bus].Handle.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    i2cHandle[bus].Handle.Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;
+    i2cHandle[device].Handle.Init.Timing          = 0x00D00E28; /* (Rise time = 120ns, Fall time = 25ns) */ 
+    i2cHandle[device].Handle.Init.OwnAddress1     = 0x00;
+    i2cHandle[device].Handle.Init.AddressingMode  = I2C_ADDRESSINGMODE_7BIT;
+    i2cHandle[device].Handle.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+    i2cHandle[device].Handle.Init.OwnAddress2     = 0xFF;
+    i2cHandle[device].Handle.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+    i2cHandle[device].Handle.Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;
     
     
-    HAL_I2C_Init(&i2cHandle[bus].Handle);
+    HAL_I2C_Init(&i2cHandle[device].Handle);
     /* Enable the Analog I2C Filter */
-    HAL_I2CEx_ConfigAnalogFilter(&i2cHandle[bus].Handle,I2C_ANALOGFILTER_ENABLE);
+    HAL_I2CEx_ConfigAnalogFilter(&i2cHandle[device].Handle,I2C_ANALOGFILTER_ENABLE);
     
-    HAL_NVIC_SetPriority(i2cHardwareMap[bus].er_irq, NVIC_PRIORITY_BASE(NVIC_PRIO_I2C_ER), NVIC_PRIORITY_SUB(NVIC_PRIO_I2C_ER));
-    HAL_NVIC_EnableIRQ(i2cHardwareMap[bus].er_irq);
-    HAL_NVIC_SetPriority(i2cHardwareMap[bus].ev_irq, NVIC_PRIORITY_BASE(NVIC_PRIO_I2C_EV), NVIC_PRIORITY_SUB(NVIC_PRIO_I2C_EV));
-    HAL_NVIC_EnableIRQ(i2cHardwareMap[bus].ev_irq);
+    HAL_NVIC_SetPriority(i2cHardwareMap[device].er_irq, NVIC_PRIORITY_BASE(NVIC_PRIO_I2C_ER), NVIC_PRIORITY_SUB(NVIC_PRIO_I2C_ER));
+    HAL_NVIC_EnableIRQ(i2cHardwareMap[device].er_irq);
+    HAL_NVIC_SetPriority(i2cHardwareMap[device].ev_irq, NVIC_PRIORITY_BASE(NVIC_PRIO_I2C_EV), NVIC_PRIORITY_SUB(NVIC_PRIO_I2C_EV));
+    HAL_NVIC_EnableIRQ(i2cHardwareMap[device].ev_irq);
 }
 
 uint16_t i2cGetErrorCounter(void)
 {
     return i2cErrorCount;
-}
-
-static void i2cUnstick(I2CDevice bus)
-{
-    GPIO_TypeDef *gpioscl;
-    GPIO_TypeDef *gpiosda;
-    uint16_t scl, sda;
-    int i;
-    
-    // prepare pins
-    gpioscl = i2cHardwareMap[bus].gpioscl;
-    scl = i2cHardwareMap[bus].scl;
-    gpiosda = i2cHardwareMap[bus].gpiosda;
-    sda = i2cHardwareMap[bus].sda;
-    
-    digitalHi(gpioscl, scl);
-    digitalHi(gpiosda, sda);
-    
-    GPIO_InitTypeDef  GPIO_InitStruct;
-    GPIO_InitStruct.Pin       = i2cHardwareMap[bus].scl;
-    GPIO_InitStruct.Mode      = GPIO_MODE_OUTPUT_OD;
-    GPIO_InitStruct.Pull      = GPIO_PULLUP;
-    GPIO_InitStruct.Speed     = GPIO_SPEED_LOW;
-    GPIO_InitStruct.Alternate = i2cHardwareMap[bus].GpioAf;
-    HAL_GPIO_Init(i2cHardwareMap[bus].gpioscl, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin       = i2cHardwareMap[bus].sda;
-    HAL_GPIO_Init(i2cHardwareMap[bus].gpiosda, &GPIO_InitStruct);
-
-    for (i = 0; i < 8; i++) {
-        // Wait for any clock stretching to finish
-        while (!digitalIn(gpioscl, scl))
-            delayMicroseconds(10);
-
-        // Pull low
-        digitalLo(gpioscl, scl); // Set bus low
-        delayMicroseconds(10);
-        // Release high again
-        digitalHi(gpioscl, scl); // Set bus high
-        delayMicroseconds(10);
-    }
-
-    // Generate a start then stop condition
-    digitalLo(gpiosda, sda); // Set bus data low
-    delayMicroseconds(10);
-    digitalLo(gpioscl, scl); // Set bus scl low
-    delayMicroseconds(10);
-    digitalHi(gpioscl, scl); // Set bus scl high
-    delayMicroseconds(10);
-    digitalHi(gpiosda, sda); // Set bus sda high
-
-    // Init pins
-    GPIO_InitStruct.Pin       = i2cHardwareMap[bus].scl;
-    GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
-    GPIO_InitStruct.Pull      = GPIO_PULLUP;
-    GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = i2cHardwareMap[bus].GpioAf;
-    HAL_GPIO_Init(i2cHardwareMap[bus].gpioscl, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin       = i2cHardwareMap[bus].sda;
-    HAL_GPIO_Init(i2cHardwareMap[bus].gpiosda, &GPIO_InitStruct);
 }
 
 #endif
