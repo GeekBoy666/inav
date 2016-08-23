@@ -1,15 +1,8 @@
 env:
-  - TARGET=CC3D
-  - TARGET=NAZE
+  - TARGET=MODULOF7
+  - TARGET=NUCLEOF7
   - TARGET=STM32F3DISCOVERY
-  - TARGET=RMDO
-  - TARGET=SPRACINGF3
-  - TARGET=SPRACINGF3EVO
-  - TARGET=SPARKY
-  - TARGET=FURYF3
-  - TARGET=FURYF3_SPIFLASH
-  - TARGET=RCEXPLORERF3
-  
+
 # use new docker environment
 sudo: false
 
@@ -41,10 +34,4 @@ script: ./.travis.sh
 cache: apt
 
 notifications:
-  email: false
-  webhooks:
-    urls:
-      - https://webhooks.gitter.im/e/34e795df229478ac3a3b
-    on_success: always
-    on_failure: always
-    on_start: never
+  email: true
