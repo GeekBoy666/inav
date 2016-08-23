@@ -202,7 +202,10 @@ void init(void)
 
     timerInit();  // timer must be initialized before any channel is allocated
 
+/// TODO: HAL implement genreric dma driver
+#ifndef USE_HAL_DRIVER
     dmaInit();
+#endif
 
 #if defined(AVOID_UART2_FOR_PWM_PPM)
     serialInit(&masterConfig.serialConfig, feature(FEATURE_SOFTSERIAL),

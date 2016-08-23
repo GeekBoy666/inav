@@ -90,6 +90,7 @@
     #define MCU_UART6_DMA_RX_IRQHandler     DMA2_Stream1_IRQHandler
     
     // Config I2C
+    #define MCU_I2C_AF        GPIO_AF4_I2C1
     #define MCU_I2C1_AF     GPIO_AF4_I2C1
     #define MCU_I2C2_AF     GPIO_AF4_I2C2
     #define MCU_I2C3_AF     GPIO_AF4_I2C3

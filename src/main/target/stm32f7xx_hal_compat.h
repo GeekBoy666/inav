@@ -14,8 +14,21 @@
 //#define EXTI_GetITStatus(x)          __HAL_GPIO_EXTI_GET_IT(x)
 //#define EXTI_ClearITPendingBit(x)   __HAL_GPIO_EXTI_CLEAR_IT(x)
 
+/* Add legacy definition */
+#define  GPIO_Speed_2MHz    GPIO_SPEED_FREQ_LOW
+#define  GPIO_Speed_25MHz   GPIO_SPEED_FREQ_MEDIUM
+#define  GPIO_Speed_50MHz   GPIO_SPEED_FREQ_HIGH
+#define  GPIO_Speed_100MHz  GPIO_SPEED_FREQ_VERY_HIGH
+
 #define GPIO_ResetBits(port, pin)   HAL_GPIO_WritePin(port,pin,false);
 #define GPIO_SetBits(port, pin)     HAL_GPIO_WritePin(port,pin,true);
+
+typedef enum
+{
+  EXTI_Trigger_Rising = GPIO_MODE_IT_RISING,
+  EXTI_Trigger_Falling = GPIO_MODE_IT_FALLING,  
+  EXTI_Trigger_Rising_Falling = GPIO_MODE_IT_RISING_FALLING
+}EXTITrigger_TypeDef;
 
 //void GPIO_StructInit(GPIO_InitTypeDef* GPIO_InitStruct);
 

@@ -52,20 +52,16 @@
 
 #define USE_ADC
 // ADC
-#define VBAT_ADC_GPIO               GPIOC
-#define VBAT_ADC_GPIO_PIN           Pin_3
+#define VBAT_ADC_PIN                PC3
 #define VBAT_ADC_CHANNEL            ADC_CHANNEL_13
 
-#define CURRENT_METER_ADC_GPIO      GPIOC
-#define CURRENT_METER_ADC_GPIO_PIN  Pin_2
+#define CURRENT_METER_ADC_PIN       PC2
 #define CURRENT_METER_ADC_CHANNEL   ADC_CHANNEL_12
 
-#define RSSI_ADC_GPIO               GPIOC
-#define RSSI_ADC_GPIO_PIN           Pin_4
+#define RSSI_ADC_PIN                PC4
 #define RSSI_ADC_CHANNEL            ADC_CHANNEL_14
 
-#define EXTERNAL1_ADC_GPIO          GPIOC
-#define EXTERNAL1_ADC_GPIO_PIN      Pin_5
+#define EXTERNAL1_ADC_PIN           PC5
 #define EXTERNAL1_ADC_CHANNEL       ADC_CHANNEL_15
 
 //#define INVERTER_PIN Pin_0 // PC0 used as inverter select GPIO
@@ -75,23 +71,26 @@
 
 #define USE_FAKE_GYRO
 #define USE_FAKE_ACC
-#define USE_FAKE_BARO
-#define USE_FAKE_MAG
+//#define USE_FAKE_BARO
+//#define USE_FAKE_MAG
 
 
-#define MPU6500_CS_GPIO       GPIOA
-#define MPU6500_CS_PIN        Pin_15
+#define MPU6500_CS_PIN        PA15
 #define MPU6500_SPI_INSTANCE  SPIDEV_1
+
+
+#define MPU9250_CS_PIN        PA15
+#define MPU9250_SPI_INSTANCE  SPIDEV_1
 
 //#define DEBUG_MPU_DATA_READY_INTERRUPT
 #define USE_MPU_DATA_READY_SIGNAL
 
 #define ACC
-#define USE_ACC_SPI_MPU6500
+#define USE_ACC_SPI_MPU9250
 #define ACC_MPU6500_ALIGN CW270_DEG
 
 #define GYRO
-#define USE_GYRO_SPI_MPU6500
+#define USE_GYRO_SPI_MPU9250
 #define GYRO_MPU6500_ALIGN CW270_DEG
 
 #define MAG
@@ -169,34 +168,22 @@
 
 #define USE_SPI
 #define USE_SPI_DEVICE_1
-#define SPI1_SCK_GPIO   GPIOB
-#define SPI1_SCK_PIN    Pin_3
-#define SPI1_NSS_GPIO   GPIOA
-#define SPI1_NSS_PIN    Pin_15
-#define SPI1_MISO_GPIO  GPIOB
-#define SPI1_MISO_PIN   Pin_4
-#define SPI1_MOSI_GPIO  GPIOB
-#define SPI1_MOSI_PIN   Pin_5
+#define SPI1_SCK_PIN    PB3
+#define SPI1_NSS_PIN    PA15
+#define SPI1_MISO_PIN   PB4
+#define SPI1_MOSI_PIN   PB5
 
 #define USE_SPI_DEVICE_2
-#define SPI2_SCK_GPIO   GPIOB
-#define SPI2_SCK_PIN    Pin_13
-#define SPI2_NSS_GPIO   GPIOB
-#define SPI2_NSS_PIN    Pin_12
-#define SPI2_MISO_GPIO  GPIOB
-#define SPI2_MISO_PIN   Pin_14
-#define SPI2_MOSI_GPIO  GPIOB
-#define SPI2_MOSI_PIN   Pin_15
+#define SPI2_SCK_PIN    PB13
+#define SPI2_NSS_PIN    PB12
+#define SPI2_MISO_PIN   PB14
+#define SPI2_MOSI_PIN   PB15
 
 #define USE_SPI_DEVICE_3
-#define SPI3_SCK_GPIO   GPIOC
-#define SPI3_SCK_PIN    Pin_10
-#define SPI3_NSS_GPIO   GPIOA
-#define SPI3_NSS_PIN    Pin_4
-#define SPI3_MISO_GPIO  GPIOC
-#define SPI3_MISO_PIN   Pin_11
-#define SPI3_MOSI_GPIO  GPIOC
-#define SPI3_MOSI_PIN   Pin_12
+#define SPI3_SCK_PIN    PC10
+#define SPI3_NSS_PIN    PA4
+#define SPI3_MISO_PIN   PC11
+#define SPI3_MOSI_PIN   PC12
 
 
 #define USE_I2C
@@ -204,25 +191,19 @@
 #define I2C_DEVICE_EXT (I2CDEV_2)
 #define I2C_DEVICE I2C_DEVICE_INT
 
-#define I2C1_SCL_GPIO GPIOB
-#define I2C1_SCL_PIN Pin_6
-#define I2C1_SDA_GPIO GPIOB
-#define I2C1_SDA_PIN Pin_7
+#define I2C1_SCL PB6
+#define I2C1_SDA PD7
 
-#define I2C2_SCL_GPIO GPIOB
-#define I2C2_SCL_PIN Pin_10
-#define I2C2_SDA_GPIO GPIOB
-#define I2C2_SDA_PIN Pin_11
+#define I2C2_SCL PB10
+#define I2C2_SDA PB11
 
-#define I2C3_SCL_GPIO GPIOA
-#define I2C3_SCL_PIN Pin_8
-#define I2C3_SDA_GPIO GPIOC
-#define I2C3_SDA_PIN Pin_9
+#define I2C3_SCL PA8
+#define I2C3_SDA PC9
 
 
 #define SENSORS_SET (SENSOR_ACC|SENSOR_MAG|SENSOR_BARO)
 
-//#define LED_STRIP
+#define LED_STRIP
 #define LED_STRIP_GPIO              GPIOA
 #define LED_STRIP_PIN               Pin_6
 #define LED_STRIP_AF                GPIO_AF2_TIM3

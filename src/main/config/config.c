@@ -153,7 +153,11 @@ void useRcControlsConfig(modeActivationCondition_t *modeActivationConditions, es
 #else
 #define FLASH_TO_RESERVE_FOR_CONFIG 0x1000
 #endif
-
+#ifdef USE_HAL_DRIVER
+#if !defined(CONFIG_START_FLASH_ADDRESS) && !defined(CONFIG_START_FLASH_SECTOR)
+    #error Please define CONFIG_START_FLASH_ADDRESS and CONFIG_START_FLASH_SECTOR in your tarhet.h
+#endif
+#else
 // use the last flash pages for storage
 #ifdef CUSTOM_FLASH_MEMORY_ADDRESS
 size_t custom_flash_memory_address = 0;
@@ -164,6 +168,8 @@ size_t custom_flash_memory_address = 0;
 #define CONFIG_START_FLASH_ADDRESS (0x08000000 + (uint32_t)((FLASH_PAGE_SIZE * FLASH_PAGE_COUNT) - FLASH_TO_RESERVE_FOR_CONFIG))
 #endif
 #endif
+#endif
+
 
 master_t masterConfig;                 // master config struct with data independent from profiles
 profile_t *currentProfile;
@@ -1059,7 +1065,72 @@ void readEEPROMAndNotify(void)
     readEEPROM();
     beeperConfirmationBeeps(1);
 }
+#ifdef USE_HAL_DRIVER
 
+// FIXME: HAL for now this will only work for F4/F7 as flash layout is different
+void writeEEPROM(void)
+{
+    // Generate compile time error if the config does not fit in the reserved area of flash.
+    BUILD_BUG_ON(sizeof(master_t) > FLASH_TO_RESERVE_FOR_CONFIG);
+
+    HAL_StatusTypeDef status;
+    uint32_t wordOffset;
+    int8_t attemptsRemaining = 3;
+
+    suspendRxSignal();
+
+    // prepare checksum/version constants
+    masterConfig.version = EEPROM_CONF_VERSION;
+    masterConfig.size = sizeof(master_t);
+    masterConfig.magic_be = 0xBE;
+    masterConfig.magic_ef = 0xEF;
+    masterConfig.chk = 0; // erase checksum before recalculating
+    masterConfig.chk = calculateChecksum((const uint8_t *) &masterConfig, sizeof(master_t));
+
+    // write it
+    /* Unlock the Flash to enable the flash control register access *************/
+    HAL_FLASH_Unlock();
+    while (attemptsRemaining--)
+    {
+        /* Fill EraseInit structure*/
+        FLASH_EraseInitTypeDef EraseInitStruct = {0};
+        EraseInitStruct.TypeErase     = FLASH_TYPEERASE_SECTORS;
+        EraseInitStruct.VoltageRange  = FLASH_VOLTAGE_RANGE_3; // 2.7-3.6V
+        EraseInitStruct.Sector        = CONFIG_START_FLASH_SECTOR;
+        EraseInitStruct.NbSectors     = 1;
+        uint32_t SECTORError;
+        status = HAL_FLASHEx_Erase(&EraseInitStruct, &SECTORError);
+        if (status != HAL_OK)
+        {
+            continue;
+        }
+        else
+        {
+            for (wordOffset = 0; wordOffset < sizeof(master_t); wordOffset += 4)
+            {
+                status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, CONFIG_START_FLASH_ADDRESS + wordOffset, *(uint32_t *) ((char *) &masterConfig + wordOffset));
+                if(status != HAL_OK)
+                {
+                    break;
+                }
+            }
+        }
+
+
+        if (status == HAL_OK) {
+            break;
+        }
+    }
+    HAL_FLASH_Lock();
+
+    // Flash write failed - just die now
+    if (status != HAL_OK || !isEEPROMContentValid()) {
+        failureMode(FAILURE_FLASH_WRITE_FAILED);
+    }
+
+    resumeRxSignal();
+}
+#else
 void writeEEPROM(void)
 {
     // Generate compile time error if the config does not fit in the reserved area of flash.
@@ -1124,6 +1195,8 @@ void writeEEPROM(void)
 
     resumeRxSignal();
 }
+#endif
+
 
 void ensureEEPROMContainsValidData(void)
 {
