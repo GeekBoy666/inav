@@ -1,7 +1,7 @@
 env:
   - TARGET=MODULOF7
   - TARGET=NUCLEOF7
-  - TARGET=STM32F3DISCOVERY
+#  - TARGET=STM32F3DISCOVERY
 
 # use new docker environment
 sudo: false

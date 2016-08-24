@@ -95,12 +95,12 @@ uint32_t millis(void)
 {
     return sysTickUptime;
 }
-
+#ifdef USE_HAL_DRIVER
 void systemInit(void)
 {
 
     
-#ifdef USE_HAL_DRIVER
+
     // Priority grouping should be setup before any irq prio is set.
     HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITY_GROUPING);
    
@@ -165,8 +165,9 @@ void systemInit(void)
     __HAL_RCC_UART8_CLK_ENABLE();
     #endif
     
-#endif
+
 }
+#endif
 
 #if 1
 void delayMicroseconds(uint32_t us)
