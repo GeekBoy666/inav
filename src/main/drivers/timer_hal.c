@@ -57,7 +57,7 @@ typedef struct timerConfig_s {
     timerOvrHandlerRec_t *overflowCallbackActive; // null-terminated linkded list of active overflow callbacks
 	uint32_t forcedOverflowTimerValue;
 } timerConfig_t;
-timerConfig_t timerConfig[USED_TIMER_COUNT];
+timerConfig_t timerConfig[USED_TIMER_COUNT+1];
 
 typedef struct {
     channelType_t type;
@@ -67,13 +67,13 @@ timerChannelInfo_t timerChannelInfo[USABLE_TIMER_CHANNEL_COUNT];
 typedef struct {
     uint8_t priority;
 } timerInfo_t;
-timerInfo_t timerInfo[USED_TIMER_COUNT];
+timerInfo_t timerInfo[USED_TIMER_COUNT+1];
 
 typedef struct 
 {
     TIM_HandleTypeDef Handle;
 } timerHandle_t;
-timerHandle_t timeHandle[USED_TIMER_COUNT];
+timerHandle_t timeHandle[USED_TIMER_COUNT+1];
 
 // return index of timer in timer table. Lowest timer has index 0
 #define TIMER_INDEX(i) BITCOUNT((TIM_N(i) - 1) & USED_TIMERS)

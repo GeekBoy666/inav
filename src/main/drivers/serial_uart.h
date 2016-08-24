@@ -44,8 +44,11 @@
 typedef struct {
     serialPort_t port;
 
-
-#if defined(STM32F4) || defined(USE_HAL_DRIVER)
+#if defined(STM32F7)
+    DMA_HandleTypeDef rxDMAHandle;
+    DMA_HandleTypeDef txDMAHandle;
+#endif
+#if defined(STM32F4) || defined(STM32F7)
     DMA_Stream_TypeDef *rxDMAStream;
     DMA_Stream_TypeDef *txDMAStream;
     uint32_t rxDMAChannel;
@@ -67,10 +70,8 @@ typedef struct {
 #ifdef USE_HAL_DRIVER
     // All USARTs can also be used as UART, and we use them only as UART.
     UART_HandleTypeDef Handle;
-#else
-    USART_TypeDef *USARTx;
-
 #endif
+    USART_TypeDef *USARTx;
 } uartPort_t;
 
 serialPort_t *uartOpen(USART_TypeDef *USARTx, serialReceiveCallbackPtr callback, uint32_t baudRate, portMode_t mode, portOptions_t options);

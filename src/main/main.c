@@ -202,8 +202,7 @@ void init(void)
 
     timerInit();  // timer must be initialized before any channel is allocated
 
-/// TODO: HAL implement genreric dma driver
-#ifndef USE_HAL_DRIVER
+#if !defined(USE_HAL_DRIVER)
     dmaInit();
 #endif
 
@@ -335,6 +334,9 @@ void init(void)
 #else
     spiInit(SPIDEV_3);
 #endif
+#endif
+#ifdef USE_SPI_DEVICE_4
+    spiInit(SPIDEV_4);
 #endif
 #endif
 
